@@ -1,41 +1,73 @@
 import Foundation
 
-public enum BodyPart: String, CaseIterable {
-    case head = "Head"
-    case shoulders = "Shoulders"
-    case knees = "Knees"
-    case feet = "Feet"
-}
-
 struct Condition: Identifiable, Hashable {
     let id: UUID
     let name: String
     let description: String
-    let bodyPart: BodyPart
+    let bodyArea: BodyArea
     let recommendedExercises: [Exercise]
     
-    init(id: UUID = UUID(), name: String, description: String, bodyPart: BodyPart, recommendedExercises: [Exercise] = []) {
+    init(id: UUID = UUID(), name: String, description: String, bodyArea: BodyArea = .knee, recommendedExercises: [Exercise] = []) {
         self.id = id
         self.name = name
         self.description = description
-        self.bodyPart = bodyPart
+        self.bodyArea = bodyArea
         self.recommendedExercises = recommendedExercises
     }
 }
 
 extension Condition {
-    static let library: [Condition] = [
+    /// Full library mapped by body part for the BodyMapView
+    static let library: [Condition] = kneeConditions + shoulderConditions + ankleConditions + hipConditions
+    
+    /// Filter conditions by body area
+    static func conditions(for area: BodyArea) -> [Condition] {
+        library.filter { $0.bodyArea == area }
+    }
+    
+    // MARK: - Knee
+    static let kneeConditions: [Condition] = [
         Condition(
             name: "Hard to bend past 90°",
-            description: "Limited flexion. The goal is to gradually reach a larger bending angle.",
-            bodyPart: .knees,
+            description: "Limited flexion after surgery or injury. The goal is to gradually increase bending range.",
+            bodyArea: .knee,
             recommendedExercises: Exercise.kneeFlexionExercises
         ),
         Condition(
             name: "Hard to straighten fully",
-            description: "Extension lag. The goal is to fully straighten the knee.",
-            bodyPart: .knees,
+            description: "Extension lag — the knee won't lock straight. The goal is to achieve full extension.",
+            bodyArea: .knee,
             recommendedExercises: Exercise.kneeExtensionExercises
-        )
+        ),
+    ]
+    
+    // MARK: - Shoulder
+    static let shoulderConditions: [Condition] = [
+        Condition(
+            name: "Stiff or frozen shoulder",
+            description: "Reduced range of motion from adhesive capsulitis, surgery, or disuse.",
+            bodyArea: .shoulder,
+            recommendedExercises: Exercise.shoulderExercises
+        ),
+    ]
+    
+    // MARK: - Ankle
+    static let ankleConditions: [Condition] = [
+        Condition(
+            name: "Ankle sprain recovery",
+            description: "Rebuilding range of motion after a sprain or fracture.",
+            bodyArea: .ankle,
+            recommendedExercises: Exercise.ankleExercises
+        ),
+    ]
+    
+    // MARK: - Hip
+    static let hipConditions: [Condition] = [
+        Condition(
+            name: "Hip weakness / post-op",
+            description: "Strengthening the hip after replacement or injury.",
+            bodyArea: .hip,
+            recommendedExercises: Exercise.hipExercises
+        ),
     ]
 }

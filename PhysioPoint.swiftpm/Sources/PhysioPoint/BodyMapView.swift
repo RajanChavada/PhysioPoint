@@ -1,55 +1,56 @@
 import SwiftUI
 
-enum BodyPart: String, CaseIterable, Identifiable {
-    case head, shoulders, knees, feet
-    var id: String { rawValue }
-}
-
 struct NormalizedBodyRegion: Identifiable {
     let id = UUID()
-    let kind: BodyPart
+    let area: BodyArea
+    let label: String
     let center: CGPoint  // x, y in 0.0...1.0
     let size: CGSize     // width, height in 0.0...1.0
 }
 
-let normalizedRegions: [NormalizedBodyRegion] = [
+let bodyRegions: [NormalizedBodyRegion] = [
     NormalizedBodyRegion(
-        kind: .head,
-        center: CGPoint(x: 0.5, y: 0.12),
-        size: CGSize(width: 0.32, height: 0.16)
+        area: .shoulder,
+        label: "Shoulders",
+        center: CGPoint(x: 0.5, y: 0.22),
+        size: CGSize(width: 0.75, height: 0.10)
     ),
     NormalizedBodyRegion(
-        kind: .shoulders,
-        center: CGPoint(x: 0.5, y: 0.26),
-        size: CGSize(width: 0.8, height: 0.12)
+        area: .hip,
+        label: "Hips",
+        center: CGPoint(x: 0.5, y: 0.48),
+        size: CGSize(width: 0.50, height: 0.10)
     ),
     NormalizedBodyRegion(
-        kind: .knees,
-        center: CGPoint(x: 0.5, y: 0.70),
-        size: CGSize(width: 0.48, height: 0.12)
+        area: .knee,
+        label: "Knees",
+        center: CGPoint(x: 0.5, y: 0.68),
+        size: CGSize(width: 0.40, height: 0.10)
     ),
     NormalizedBodyRegion(
-        kind: .feet,
+        area: .ankle,
+        label: "Ankles",
         center: CGPoint(x: 0.5, y: 0.88),
-        size: CGSize(width: 0.48, height: 0.16)
-    )
+        size: CGSize(width: 0.40, height: 0.10)
+    ),
 ]
 
 struct AdaptiveBodyMapView: View {
-    let onSelect: (BodyPart) -> Void
-    @State private var hoveredPart: BodyPart? = nil
+    let onSelect: (BodyArea) -> Void
+    @State private var hoveredArea: BodyArea? = nil
+    @State private var tappedArea: BodyArea? = nil
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Image("front-facing")
-                    .resizable()
-                    .scaledToFit()
+                // Body silhouette image
+                BundledImage("body_front", maxHeight: geo.size.height)
                     .frame(width: geo.size.width, height: geo.size.height)
+                    .opacity(0.6)
 
-                ForEach(normalizedRegions) { region in
+                ForEach(bodyRegions) { region in
+                    let imageAspect: CGFloat = 0.45 // roughly portrait body shape
                     let viewAspect = geo.size.width / geo.size.height
-                    let imageAspect: CGFloat = 1.0 / 2.0 
                     
                     let actualWidth = viewAspect > imageAspect ? geo.size.height * imageAspect : geo.size.width
                     let actualHeight = viewAspect > imageAspect ? geo.size.height : geo.size.width / imageAspect
@@ -57,18 +58,34 @@ struct AdaptiveBodyMapView: View {
                     let offsetX = (geo.size.width - actualWidth) / 2
                     let offsetY = (geo.size.height - actualHeight) / 2
 
-                    let width = actualWidth * region.size.width
-                    let height = actualHeight * region.size.height
+                    let w = actualWidth * region.size.width
+                    let h = actualHeight * region.size.height
                     let x = offsetX + (actualWidth * region.center.x)
                     let y = offsetY + (actualHeight * region.center.y)
+                    
+                    let isSelected = tappedArea == region.area
 
-                    Rectangle()
-                        .fill(hoveredPart == region.kind ? Color.blue.opacity(0.3) : Color.clear)
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isSelected ? Color.blue.opacity(0.35) : Color.blue.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(isSelected ? Color.blue : Color.blue.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                        )
+                        .overlay(
+                            Text(region.label)
+                                .font(.caption2.bold())
+                                .foregroundColor(isSelected ? .white : .blue)
+                        )
                         .contentShape(Rectangle())
-                        .frame(width: width, height: height)
+                        .frame(width: w, height: h)
                         .position(x: x, y: y)
                         .onTapGesture {
-                            onSelect(region.kind)
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                tappedArea = region.area
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                onSelect(region.area)
+                            }
                         }
                 }
             }
