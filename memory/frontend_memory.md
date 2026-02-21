@@ -8,6 +8,7 @@
   - Implemented `PhysioPointState` in `AppState.swift` to handle path navigation, conditional selection, exercise selection, and `SessionMetrics`.
   - Implemented `ContentView` with `NavigationStack` and full routing mapping to other Views.
   - Implemented `TriageView` to allow selection of rehab conditions (Knee demo).
+  - Implemented `BodyMapView` and integrated it into `TriageView` to allow interactive selection of body parts (head, shoulders, knees, feet) mapped to conditions.
   - Implemented `ScheduleView` to display exercises based on condition selection.
   - Implemented `SessionIntroView` to show exercise guidelines before AR.
   - Refactored `ExerciseARView` to support `NavigationStack`, displaying live feedback, and adding a `Finish` button which routes to `SummaryView`.

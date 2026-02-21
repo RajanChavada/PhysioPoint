@@ -12,6 +12,8 @@
 3. Populated `StorageService.swift` reading and writing arrays limited to 10 stored offline cache sessions max in UserDefaults.
 4. Created `ScheduleService.swift` which builds the 3-a-day rehab loop mapping the core `Exercise` to "Morning", "Afternoon", and "Evening" logic and flags slot completions.
 5. Included notes commenting out potential `UNUserNotificationCenter` handling which shouldn't be executed for offline minimal app but indicates iOS logic intent for judges.
+6. Implemented core RehabEngine math and AR view tracking in `ExerciseARView` with fallback for Playgrounds.
+7. Integrated `ExerciseModel` configurations for target angles and hold durations dynamically into `RehabSessionViewModel`.
 
 ## Next Steps / Integrations
 - Need a frontend UI update (potentially `ScheduleView`) that connects our `@StateObject`/`ObservableObject` `ScheduleService` logically onto a SwiftUI interface.

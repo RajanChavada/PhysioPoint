@@ -1,24 +1,15 @@
 import Foundation
 
-public enum BodyPart: String, CaseIterable {
-    case head = "Head"
-    case shoulders = "Shoulders"
-    case knees = "Knees"
-    case feet = "Feet"
-}
-
 struct Condition: Identifiable, Hashable {
     let id: UUID
     let name: String
     let description: String
-    let bodyPart: BodyPart
     let recommendedExercises: [Exercise]
     
-    init(id: UUID = UUID(), name: String, description: String, bodyPart: BodyPart, recommendedExercises: [Exercise] = []) {
+    init(id: UUID = UUID(), name: String, description: String, recommendedExercises: [Exercise] = []) {
         self.id = id
         self.name = name
         self.description = description
-        self.bodyPart = bodyPart
         self.recommendedExercises = recommendedExercises
     }
 }
@@ -28,13 +19,11 @@ extension Condition {
         Condition(
             name: "Hard to bend past 90°",
             description: "Limited flexion. The goal is to gradually reach a larger bending angle.",
-            bodyPart: .knees,
             recommendedExercises: Exercise.kneeFlexionExercises
         ),
         Condition(
             name: "Hard to straighten fully",
             description: "Extension lag. The goal is to fully straighten the knee.",
-            bodyPart: .knees,
             recommendedExercises: Exercise.kneeExtensionExercises
         )
     ]

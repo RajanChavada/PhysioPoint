@@ -12,10 +12,14 @@ public class RehabSessionViewModel: ObservableObject {
     @Published public var angleZone: AngleZone = .aboveTarget
     @Published public var feedbackMessage: String = "Position yourself in camera"
     
-    private let engine: RehabEngine
+    private var engine: RehabEngine
     
     public init(engine: RehabEngine = SimpleRehabEngine()) {
         self.engine = engine
+    }
+    
+    public func setup(targetAngle: Double, tolerance: Double, holdTime: TimeInterval) {
+        self.engine = SimpleRehabEngine(targetAngle: targetAngle, tolerance: tolerance, requiredHoldTime: holdTime)
     }
     
     public func processJoints(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) {
@@ -118,6 +122,15 @@ public struct ExerciseARView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            if let exercise = appState.selectedExercise {
+                let lower = exercise.targetAngleRange.lowerBound
+                let upper = exercise.targetAngleRange.upperBound
+                let targetAngle = (lower + upper) / 2.0
+                let tolerance = max((upper - lower) / 2.0, 5.0) // Ensure at least 5 degrees tolerance
+                viewModel.setup(targetAngle: targetAngle, tolerance: tolerance, holdTime: TimeInterval(exercise.holdSeconds))
+            }
+        }
     }
     
     @ViewBuilder
@@ -156,8 +169,11 @@ struct ARViewRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
         let config = ARBodyTrackingConfiguration()
-        arView.session.run(config)
+        arView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
         arView.session.delegate = context.coordinator
+        
+        context.coordinator.arView = arView
+        
         return arView
     }
     
@@ -169,9 +185,33 @@ struct ARViewRepresentable: UIViewRepresentable {
     
     class Coordinator: NSObject, ARSessionDelegate {
         let viewModel: RehabSessionViewModel
+        weak var arView: ARView?
+        
+        var rootAnchor: AnchorEntity?
+        var hipNode = ModelEntity()
+        var kneeNode = ModelEntity()
+        var ankleNode = ModelEntity()
         
         init(viewModel: RehabSessionViewModel) {
             self.viewModel = viewModel
+        }
+        
+        private func setupVisualsIfNeeded() {
+            guard rootAnchor == nil, let arView = arView else { return }
+            
+            let anchor = AnchorEntity(world: .zero)
+            arView.scene.addAnchor(anchor)
+            
+            let sphere = MeshResource.generateSphere(radius: 0.04) // 4cm glowing spheres
+            hipNode = ModelEntity(mesh: sphere, materials: [UnlitMaterial(color: .green)])
+            kneeNode = ModelEntity(mesh: sphere, materials: [UnlitMaterial(color: .yellow)])
+            ankleNode = ModelEntity(mesh: sphere, materials: [UnlitMaterial(color: .red)])
+            
+            anchor.addChild(hipNode)
+            anchor.addChild(kneeNode)
+            anchor.addChild(ankleNode)
+            
+            self.rootAnchor = anchor
         }
         
         func getJointPosition(anchor: ARBodyAnchor, jointName: String) -> SIMD3<Float>? {
@@ -183,11 +223,17 @@ struct ARViewRepresentable: UIViewRepresentable {
         func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
             guard let bodyAnchor = anchors.compactMap({ $0 as? ARBodyAnchor }).first else { return }
             
+            setupVisualsIfNeeded()
+            
             guard let hip = getJointPosition(anchor: bodyAnchor, jointName: "right_up_leg_joint"),
                   let knee = getJointPosition(anchor: bodyAnchor, jointName: "right_leg_joint"),
                   let ankle = getJointPosition(anchor: bodyAnchor, jointName: "right_foot_joint") else {
                 return
             }
+            
+            hipNode.position = hip
+            kneeNode.position = knee
+            ankleNode.position = ankle
             
             viewModel.processJoints(hip: hip, knee: knee, ankle: ankle)
         }
