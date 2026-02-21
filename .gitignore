@@ -7,5 +7,3 @@ xcuserdata/
 *~
 
 # Ignore context folder where agent instructions and references reside
-context/
-memory/
