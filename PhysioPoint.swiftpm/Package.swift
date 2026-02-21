@@ -40,7 +40,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "PhysioPoint",
-            path: "Sources/PhysioPoint"
+            path: "Sources/PhysioPoint",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )

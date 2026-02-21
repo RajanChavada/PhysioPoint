@@ -547,3 +547,278 @@ Animate region highlight on tap (e.g., overlay a semi-transparent colored shape)
 
 Use more complex shapes (paths) instead of rectangles if you need precise contours, by building a Path and using contentShape(Path) for hit testing.
 
+
+-- 
+
+## Frontend UI kits 
+
+UIKit animations like this are cool, but for Swift Student Challenge and Swift Playgrounds app playgrounds, you should stick to SwiftUI‑first and only drop to UIKit when absolutely necessary. For PhysioPoint, you don’t need UIKit at all to get “Apple‑style” motion.
+
+Here’s how to translate that idea into something aligned with your project:
+
+Use SwiftUI animations for feedback:
+
+Angle badge that smoothly changes color/scale when you hit target.
+
+A glowing ring around the knee icon when a rep completes.
+
+If you really want a capsule‑loading/dots effect (like your UIKit snippet), implement it as a small SwiftUI component:
+
+```swift
+struct LoadingDotsView: View {
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(scale(for: index))
+                    .opacity(Double(scale(for: index)))
+                    .animation(.easeInOut(duration: 0.6).repeatForever().delay(0.1 * Double(index)), value: phase)
+            }
+        }
+        .onAppear { phase = 1 }
+    }
+
+    private func scale(for index: Int) -> CGFloat {
+        // simple phase-based scaling
+        return phase == 0 ? 0.3 : 1.0
+    }
+}
+```
+## You can show this:
+
+While calibrating AR (finding the joints).
+
+Between exercises as a transition.
+
+Key reasons to avoid UIKit for PhysioPoint:
+
+Swift Playgrounds app templates are SwiftUI‑centric; mixing UIKit is possible but adds complexity with no scoring benefit.
+​
+​
+
+You’re on a tight timeline and need:
+
+Stable AR + math
+
+Clear triage → plan → session → summary flow
+
+Solid story and polish
+
+So: treat that UIKit playground info as inspiration for motion, but implement the equivalent using SwiftUI animations inside your existing views. That keeps the project simple, small, and exactly in line with what Apple expects for a 2026 Swift Student Challenge app playground.
+
+
+
+-- 
+
+## UI Changes and navigation flow 
+
+## Landing Page view
+- Welcome message: “Welcome to PhysioPoint!”
+- Create more modular block like layout, with cards, start a new session, or start a session,
+- 2 main sections where we have the current session and then start session button which takes you to the triage view 
+- If there is an active session, show the current session card with the exercise name, progress, and a button to continue. If there is no active session, show a card prompting the user to start a new session.
+
+## Core landing page one shot 
+The Design Concept
+Hero Section: A friendly, welcoming header with a relevant 3D-style illustration to set a modern tone.
+
+## Value Proposition (The "Why"): 
+- Three clear, scannable points explaining what the app does, using standard Apple UI patterns (colorful icon inside a rounded rect).
+
+## The "Glass Door":
+- The background uses a subtle gradient and elements use .ultraThinMaterial to create that depth and frosted glass look.
+
+## Prominent Call to Action (CTA): 
+- A large, inviting button anchored to the bottom that clearly indicates the next step ("Begin Assessment").
+
+## The SwiftUI Code
+```Swift
+import SwiftUI
+
+// MARK: - Main View
+struct LandingPageView: View {
+    // Using EnvironmentObject to handle navigation in a real app
+    // @EnvironmentObject var navigationController: NavigationController
+    
+    var body: some View {
+        ZStack {
+            // 1. Background Layer
+            // A subtle, modern gradient background
+            LinearGradient(
+                colors: [Color.teal.opacity(0.15), Color.blue.opacity(0.05), Color.white],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            // 2. Main Content ScrollView
+            // Using a ScrollView ensures it fits on smaller SE screens too
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 32) {
+                    // MARK: Hero Section
+                    VStack(spacing: 16) {
+                        // Placeholder for a nice 3D illustration.
+                        // In a real app, replace this Image with a dedicated asset.
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [.blue.opacity(0.2), .teal.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 180, height: 180)
+                                .blur(radius: 20)
+                            
+                            Image(systemName: "figure.flexibility")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 100, height: 100)
+                                .foregroundStyle(LinearGradient(colors: [.blue, .teal], startPoint: .top, endPoint: .bottom))
+                        }
+                        .padding(.top, 40)
+                        
+                        VStack(spacing: 8) {
+                            Text("Welcome to PhysioPoint")
+                                .font(.system(.largeTitle, design: .rounded))
+                                .fontWeight(.bold)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.primary)
+                            
+                            Text("Your intelligent companion for a faster, smarter recovery journey.")
+                                .font(.body)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 30)
+                        }
+                    }
+                    
+                    // MARK: Value Proposition Section
+                    // Glass-morphic container for features
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("How it Works")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, -8)
+                        
+                        FeatureRow(
+                            iconColor: .blue,
+                            iconName: "camera.viewfinder",
+                            title: "AI-Powered Analysis",
+                            description: "Clinical-grade motion tracking using just your device's camera."
+                        )
+                        
+                        FeatureRow(
+                            iconColor: .teal,
+                            iconName: "chart.bar.doc.horizontal.fill",
+                            title: "Personalized Plans",
+                            description: "Exercises adapted tailored specifically to your condition and goals."
+                        )
+                        
+                        FeatureRow(
+                            iconColor: .indigo,
+                            iconName: "waveform.path.ecg",
+                            title: "Real-time Guidance",
+                            description: "Instant visual feedback to ensure you maintain perfect form."
+                        )
+                    }
+                    .padding(24)
+                    .background(.ultraThinMaterial) // The "Glass" effect
+                    .cornerRadius(24)
+                    .shadow(color: Color.black.opacity(0.05), radius: 15, x: 0, y: 5)
+                    .padding(.horizontal, 20)
+                    
+                    Spacer(minLength: 40) // Push button to bottom area
+                }
+            }
+            
+            // 3. Bottom CTA Button (Anchored)
+            VStack {
+                Spacer()
+                Button(action: {
+                    // Action to navigate to the triage/onboarding view
+                    print("Navigate to Triage")
+                    // navigationController.push(.triageView)
+                }) {
+                    HStack {
+                        Text("Begin Assessment")
+                            .fontWeight(.semibold)
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.title3)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.blue, Color.teal],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(20)
+                    .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+                // Adding a subtle background blur behind the button area for better contrast
+                .background(
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .ignoresSafeArea(edges: .bottom)
+                        .frame(height: 100) // Adjust based on tab bar needs
+                        .offset(y: 40)
+                        .blur(radius: 10)
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Helper Component for Features
+struct FeatureRow: View {
+    let iconColor: Color
+    let iconName: String
+    let title: String
+    let description: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Colorful Icon Container
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: 48, height: 48)
+                
+                Image(systemName: iconName)
+                    .font(.system(size: 22))
+                    .foregroundColor(iconColor)
+            }
+            
+            // Text Stack
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true) // Ensures text wraps nicely
+            }
+        }
+    }
+}
+
+// MARK: - Preview
+struct LandingPageView_Previews: PreviewProvider {
+    static var previews: some View {
+        LandingPageView()
+        
+        // Preview in Dark Mode to ensure glass effect works
+        LandingPageView()
+            .preferredColorScheme(.dark)
+            .previewDisplayName("Dark Mode")
+    }
+}
+```
+
+## Triage View
