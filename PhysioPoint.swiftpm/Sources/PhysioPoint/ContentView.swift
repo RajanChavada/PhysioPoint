@@ -184,6 +184,7 @@ private struct OnboardingPageContent: View {
 
 struct HomeView: View {
     @EnvironmentObject var appState: PhysioPointState
+    @EnvironmentObject var storage: StorageService
 
     var body: some View {
         NavigationStack(path: $appState.navigationPath) {
@@ -209,9 +210,14 @@ struct HomeView: View {
                         }
                         .padding(.top, 20)
 
-                        // Active session card (if applicable)
-                        if let condition = appState.selectedCondition {
-                            activeSessionCard(condition: condition)
+                        // Today's Plan slots (consolidated across all plans)
+                        if !storage.dailyPlans.isEmpty {
+                            todaysPlanSection
+                        }
+
+                        // Active plan cards
+                        ForEach(storage.dailyPlans) { plan in
+                            activePlanCard(plan: plan)
                         }
 
                         // Start new session
@@ -248,16 +254,170 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Active Session Card
+    // MARK: - Today's Plan Section (Consolidated Multi-Plan)
 
-    private func activeSessionCard(condition: Condition) -> some View {
+    private var todaysPlanSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header with consolidated progress
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Today's Plan")
+                        .font(.headline)
+                    Text(Date(), style: .date)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                todayProgressPill
+            }
+
+            // Slots grouped by plan
+            ForEach(storage.dailyPlans) { plan in
+                todayPlanGroup(plan: plan)
+            }
+
+            // All done banner
+            if storage.completedSlotCount == storage.totalSlotCount {
+                HStack(spacing: 6) {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(PPColor.vitalityTeal)
+                    Text("All sessions complete today!")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(PPColor.vitalityTeal)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(PPColor.vitalityTeal.opacity(0.08))
+                .cornerRadius(12)
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(PPColor.actionBlue.opacity(0.1), lineWidth: 1)
+        )
+    }
+
+    private var todayProgressPill: some View {
+        HStack(spacing: 6) {
+            Text("\(storage.completedSlotCount)/\(storage.totalSlotCount)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(PPColor.vitalityTeal)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(PPColor.vitalityTeal)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(PPColor.vitalityTeal.opacity(0.10))
+        .cornerRadius(12)
+    }
+
+    private func todayPlanGroup(plan: DailyPlan) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Condition header badge
+            HStack(spacing: 6) {
+                Text(plan.bodyArea.capitalized)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(PPColor.actionBlue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(PPColor.actionBlue.opacity(0.10))
+                    .cornerRadius(6)
+                Text(plan.conditionName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 4)
+
+            ForEach(plan.slots.indices, id: \.self) { i in
+                homeSlotRow(slot: plan.slots[i], index: i, plan: plan)
+            }
+        }
+    }
+
+    private func homeSlotRow(slot: PlanSlot, index i: Int, plan: DailyPlan) -> some View {
+        HStack(spacing: 12) {
+            // Status icon
+            ZStack {
+                Circle()
+                    .fill(slot.isCompleted ? PPColor.vitalityTeal.opacity(0.15) : PPColor.actionBlue.opacity(0.10))
+                    .frame(width: 36, height: 36)
+                Image(systemName: slot.isCompleted ? "checkmark.circle.fill" : homeSlotIcon(i))
+                    .font(.system(size: 16))
+                    .foregroundColor(slot.isCompleted ? PPColor.vitalityTeal : PPColor.actionBlue)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(slot.label)
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(homeFormattedHour(slot.scheduledHour))
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                Text(slot.exerciseName)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if slot.isCompleted {
+                Text("Done")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(PPColor.vitalityTeal)
+            } else {
+                Button {
+                    appState.activeSlotID = slot.id
+                    setConditionFromPlan(plan)
+                    appState.navigationPath.append("SessionIntro")
+                } label: {
+                    Text("Start")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(PPGradient.action))
+                }
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func setConditionFromPlan(_ plan: DailyPlan) {
+        // Find the matching condition and set it + exercise
+        for cond in Condition.library {
+            if cond.id == plan.conditionID {
+                appState.selectedCondition = cond
+                appState.selectedExercise = cond.recommendedExercises.first
+                return
+            }
+        }
+    }
+
+    private func homeSlotIcon(_ i: Int) -> String {
+        ["sunrise.fill", "sun.max.fill", "sunset.fill"][i % 3]
+    }
+
+    private func homeFormattedHour(_ h: Int) -> String {
+        let suffix = h < 12 ? "AM" : "PM"
+        let display = h == 0 ? 12 : (h > 12 ? h - 12 : h)
+        return "\(display):00 \(suffix)"
+    }
+
+    // MARK: - Active Plan Card (per saved plan)
+
+    private func activePlanCard(plan: DailyPlan) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Active Plan", systemImage: "play.circle.fill")
                     .font(.subheadline.bold())
                     .foregroundColor(PPColor.vitalityTeal)
                 Spacer()
-                Text(condition.bodyArea.rawValue.capitalized)
+                Text(plan.bodyArea.capitalized)
                     .font(.caption.bold())
                     .foregroundColor(PPColor.actionBlue)
                     .padding(.horizontal, 10)
@@ -266,19 +426,22 @@ struct HomeView: View {
                     .cornerRadius(8)
             }
 
-            Text(condition.name)
+            Text(plan.conditionName)
                 .font(.title3.bold())
 
-            Text("\(condition.recommendedExercises.count) exercises in your plan")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            HStack(spacing: 12) {
+                Text("\(plan.slots.filter(\.isCompleted).count)/\(plan.slots.count) sessions")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Button {
+                setConditionFromPlan(plan)
                 appState.navigationPath.append("Schedule")
             } label: {
                 HStack {
                     Image(systemName: "arrow.right.circle.fill")
-                    Text("Continue Session")
+                    Text("View Schedule")
                         .fontWeight(.semibold)
                 }
                 .font(.subheadline)

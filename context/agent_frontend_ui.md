@@ -821,4 +821,62 @@ struct LandingPageView_Previews: PreviewProvider {
 }
 ```
 
-## Triage View
+## Summary view after the session
+- Show the user that they completed the session
+- pie chart for the reps completed 
+- angle for the best bend they achieved, and the time they held the good for 
+- Also tracking the rep consistency, so maybe a small line graph showing how consistent they were across reps (e.g., angle variance or time in target zone).
+- and then todays plan checkers, 1/3 like a pie progress bar for the session, and then a how did the session go question with 3 options (good, ok, bad) that they can tap to provide feedback on how they felt the session went. This could be useful for future iterations of the app to correlate subjective feedback with the objective metrics we track. and a done button
+
+
+## Color scheme we are using with design theme we are going for 
+
+- Action Blue: #007AFF (primary interactive elements)
+- Vitality Teal: #30D5C8 (secondary accents, highlights)
+- Recovery Indigo: #5856D6 (additional accents, less frequent)
+- Glass Background: #F2F7F7 (ultra-thin material background)
+
+Core UI Components 
+- PPColor: Centralized color definitions for consistency.
+- PPGradient: Predefined gradients for buttons and backgrounds.
+- OnboardingPageContent: Reusable view for onboarding screens.
+- FeatureRow: Reusable component for the "How It Works" section on the landing page
+
+
+-- 
+
+## Feature upgrade to the home page view with the new schedule 
+
+- after the user creates their schedule after staring a new session we need to allow the user to update and revisit their scehdule or exercise. add two buttons to view the schedule or revisit an exercise THAT THEY COMPLETED marked as complete in the storage we have 
+
+Maybe something like this: 
+
+┌─────────────────────────────────┐
+│  PhysioPoint header              │
+├─────────────────────────────────┤
+│  Active Plan card               │
+│  "Hard to bend past 90°"        │
+│  Progress: ●●○ (2/3 today)      │
+│  [ Continue Session ]           │
+├─────────────────────────────────┤
+│  TODAY'S SCHEDULE               │  ← NEW SECTION
+│  ┌─────────────────────────┐   │
+│  │ ☀️ Morning  8:00 AM     │   │
+│  │ Heel Slides             │   │
+│  │ ✅ Done  [ Redo ↺ ]    │   │  ← completed state
+│  └─────────────────────────┘   │
+│  ┌─────────────────────────┐   │
+│  │ ☀️ Afternoon  1:00 PM   │   │
+│  │ Heel Slides             │   │
+│  │ [ Start → ]             │   │  ← upcoming state
+│  └─────────────────────────┘   │
+│  ┌─────────────────────────┐   │
+│  │ 🌙 Evening  6:00 PM    │   │
+│  │ Heel Slides             │   │
+│  │ [ Start → ]             │   │
+│  └─────────────────────────┘   │
+├─────────────────────────────────┤
+│  + New Session card             │
+├─────────────────────────────────┤
+│  How It Works                   │
+└─────────────────────────────────┘

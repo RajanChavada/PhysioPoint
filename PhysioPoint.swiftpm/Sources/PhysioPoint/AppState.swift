@@ -7,4 +7,5 @@ final class PhysioPointState: ObservableObject {
     @Published var latestMetrics: SessionMetrics?
     @Published var hasCompletedOnboarding: Bool = false
     @Published var onboardingPage: Int = 0
+    @Published var activeSlotID: UUID?          // which schedule slot is currently being exercised
 }

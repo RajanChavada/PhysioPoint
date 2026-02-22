@@ -6,7 +6,7 @@ struct Condition: Identifiable, Hashable {
     let description: String
     let bodyArea: BodyArea
     let recommendedExercises: [Exercise]
-    
+
     init(id: UUID = UUID(), name: String, description: String, bodyArea: BodyArea = .knee, recommendedExercises: [Exercise] = []) {
         self.id = id
         self.name = name
@@ -19,12 +19,12 @@ struct Condition: Identifiable, Hashable {
 extension Condition {
     /// Full library mapped by body part for the BodyMapView
     static let library: [Condition] = kneeConditions + shoulderConditions + elbowConditions + ankleConditions + hipConditions
-    
+
     /// Filter conditions by body area
     static func conditions(for area: BodyArea) -> [Condition] {
         library.filter { $0.bodyArea == area }
     }
-    
+
     // MARK: - Knee
     static let kneeConditions: [Condition] = [
         Condition(
@@ -40,7 +40,7 @@ extension Condition {
             recommendedExercises: Exercise.kneeExtensionExercises
         ),
     ]
-    
+
     // MARK: - Shoulder
     static let shoulderConditions: [Condition] = [
         Condition(
@@ -50,7 +50,7 @@ extension Condition {
             recommendedExercises: Exercise.shoulderExercises
         ),
     ]
-    
+
     // MARK: - Ankle
     static let ankleConditions: [Condition] = [
         Condition(
@@ -60,7 +60,7 @@ extension Condition {
             recommendedExercises: Exercise.ankleExercises
         ),
     ]
-    
+
     // MARK: - Elbow
     static let elbowConditions: [Condition] = [
         Condition(
@@ -70,7 +70,7 @@ extension Condition {
             recommendedExercises: Exercise.elbowExercises
         ),
     ]
-    
+
     // MARK: - Hip
     static let hipConditions: [Condition] = [
         Condition(

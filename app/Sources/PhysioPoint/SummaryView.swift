@@ -20,7 +20,6 @@ enum SessionFeeling: String, CaseIterable {
 
 struct SummaryView: View {
     @EnvironmentObject var appState: PhysioPointState
-    @EnvironmentObject var storage: StorageService
     @State private var selectedFeeling: SessionFeeling? = nil
     @State private var animateCheckmark = false
     @State private var animateCards = false
@@ -66,13 +65,6 @@ struct SummaryView: View {
         .navigationBarBackButtonHidden(true)
         .navigationTitle("")
         .onAppear {
-            // Mark the active schedule slot as complete
-            if let slotID = appState.activeSlotID {
-                storage.markSlotComplete(slotID)
-            }
-            // Persist session metrics
-            storage.saveSessionMetrics(metrics)
-
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
                 animateCheckmark = true
             }
@@ -115,7 +107,7 @@ struct SummaryView: View {
     private var statsCard: some View {
         HStack(spacing: 0) {
             // Reps completed ring
-            statItem(label: "Reps\nCompleted") {
+            statItem {
                 ZStack {
                     Circle()
                         .stroke(PPColor.actionBlue.opacity(0.15), lineWidth: 5)
@@ -129,12 +121,12 @@ struct SummaryView: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(PPColor.actionBlue)
                 }
-            }
+            } label: "Reps\nCompleted"
 
             thinDivider
 
             // Best bend
-            statItem(label: "Best Bend") {
+            statItem {
                 VStack(spacing: 2) {
                     HStack(alignment: .top, spacing: 1) {
                         Image(systemName: "angle")
@@ -147,12 +139,12 @@ struct SummaryView: View {
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-            }
+            } label: "Best Bend"
 
             thinDivider
 
             // Time in good form
-            statItem(label: "Time in\nGood Form") {
+            statItem {
                 VStack(spacing: 2) {
                     HStack(alignment: .top, spacing: 1) {
                         Image(systemName: "timer")
@@ -162,7 +154,7 @@ struct SummaryView: View {
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                     }
                 }
-            }
+            } label: "Time in\nGood Form"
         }
         .padding(.vertical, 16)
         .background(glassCard)
@@ -256,7 +248,7 @@ struct SummaryView: View {
 
     private var bottomRow: some View {
         HStack(spacing: 12) {
-            // Today's Plan progress ring — reads live from storage
+            // Today's Plan progress ring
             VStack(spacing: 10) {
                 Text("Today's Plan")
                     .font(.system(size: 14, weight: .semibold))
@@ -266,24 +258,17 @@ struct SummaryView: View {
                         .stroke(PPColor.actionBlue.opacity(0.12), lineWidth: 6)
                         .frame(width: 64, height: 64)
                     Circle()
-                        .trim(from: 0, to: planTotal > 0 ? CGFloat(planCompleted) / CGFloat(planTotal) : 0)
-                        .stroke(PPColor.vitalityTeal, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .trim(from: 0, to: metrics.todayTotal > 0 ? CGFloat(metrics.todayCompleted) / CGFloat(metrics.todayTotal) : 0)
+                        .stroke(PPGradient.action, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .frame(width: 64, height: 64)
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
-                        Text("\(planCompleted) of \(planTotal)")
+                        Text("\(metrics.todayCompleted) of \(metrics.todayTotal)")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                         Text("done")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
-                }
-
-                // All done banner
-                if planCompleted == planTotal {
-                    Text("All done! 🎉")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(PPColor.vitalityTeal)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -350,38 +335,18 @@ struct SummaryView: View {
     // MARK: - Done Button
 
     private var doneButton: some View {
-        VStack(spacing: 12) {
-            // Redo this session button
-            if appState.activeSlotID != nil {
-                Button {
-                    if let slotID = appState.activeSlotID {
-                        storage.unmarkSlotComplete(slotID)
-                    }
-                    appState.navigationPath.removeLast() // back to AR/session
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.counterclockwise")
-                        Text("Redo this session")
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                }
-            }
-
-            Button {
-                appState.activeSlotID = nil
-                appState.navigationPath.removeLast(appState.navigationPath.count)
-            } label: {
-                Text("Done")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(PPGradient.action)
-                    .cornerRadius(18)
-                    .shadow(color: PPColor.vitalityTeal.opacity(0.25), radius: 10, y: 4)
-            }
+        Button {
+            appState.navigationPath.removeLast(appState.navigationPath.count)
+        } label: {
+            Text("Done")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(PPGradient.action)
+                .cornerRadius(18)
+                .shadow(color: PPColor.vitalityTeal.opacity(0.25), radius: 10, y: 4)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 24)
@@ -392,19 +357,9 @@ struct SummaryView: View {
         )
     }
 
-    // MARK: - Plan Progress Computed (consolidated across all plans)
-
-    private var planCompleted: Int {
-        storage.completedSlotCount
-    }
-
-    private var planTotal: Int {
-        max(storage.totalSlotCount, 1)
-    }
-
     // MARK: - Helpers
 
-    private func statItem<Content: View>(label: String, @ViewBuilder icon: () -> Content) -> some View {
+    private func statItem<Content: View>(@ViewBuilder icon: () -> Content, label: String) -> some View {
         VStack(spacing: 8) {
             icon()
             Text(label)
