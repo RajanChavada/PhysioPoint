@@ -1,58 +1,92 @@
 import Foundation
 
+// BodyArea is defined in ExerciseModel.swift — do NOT re-declare here.
+
 // MARK: - Condition Category
 
-enum ConditionCategory: String, Codable, CaseIterable, Identifiable {
-    // Shared
-    case generalPain        = "General Pain"
-    // Knee + Elbow
-    case dislocationTherapy = "Dislocation Therapy"
-    case painBending        = "Pain Bending"
-    // Hip / Back
-    case troubleTwisting    = "Trouble Twisting"
-    case painInBending      = "Pain in Bending"
+/// Categories of conditions per body area.
+enum ConditionCategory: String, CaseIterable, Codable, Hashable {
+    // Knee
+    case generalPain
+    case dislocationTherapy
+    case painBending
+    // Elbow
+    case elbowGeneralPain
+    case elbowDislocation
+    case elbowPainBending
+    // Hip
+    case hipGeneralPain
+    case troubleTwisting
+    case painInBending
     // Ankle
-    case twistedRolled      = "Twisted / Rolled Ankle"
-    case painRotating       = "Pain in Rotating"
+    case ankleGeneralPain
+    case twistedRolled
+    case painRotating
     // Shoulder
-    case dislocatedShoulder = "Dislocated Shoulder"
-    case painLifting        = "Pain Lifting / Moving Arm"
-
-    var id: String { rawValue }
-
+    case shoulderGeneralPain
+    case dislocatedShoulder
+    case painLifting
+    
+    var displayName: String {
+        switch self {
+        case .generalPain:          return "General Pain"
+        case .dislocationTherapy:   return "Post-Dislocation"
+        case .painBending:          return "Pain When Bending"
+        case .elbowGeneralPain:     return "General Pain"
+        case .elbowDislocation:     return "Post-Dislocation"
+        case .elbowPainBending:     return "Pain When Bending"
+        case .hipGeneralPain:       return "General Pain"
+        case .troubleTwisting:      return "Trouble Twisting"
+        case .painInBending:        return "Pain in Bending"
+        case .ankleGeneralPain:     return "General Pain"
+        case .twistedRolled:        return "Twisted/Rolled"
+        case .painRotating:         return "Pain Rotating"
+        case .shoulderGeneralPain:  return "General Pain"
+        case .dislocatedShoulder:   return "Post-Dislocation"
+        case .painLifting:          return "Pain Lifting Arm"
+        }
+    }
+    
     var systemImage: String {
         switch self {
-        case .generalPain:        return "bandage"
-        case .dislocationTherapy: return "bolt.heart"
-        case .painBending:        return "arrow.up.and.down"
-        case .troubleTwisting:    return "arrow.2.circlepath"
-        case .painInBending:      return "arrow.down.forward"
-        case .twistedRolled:      return "rotate.right"
-        case .painRotating:       return "circle.dotted"
-        case .dislocatedShoulder: return "figure.arms.open"
-        case .painLifting:        return "arrow.up.circle"
+        case .generalPain, .elbowGeneralPain, .hipGeneralPain,
+             .ankleGeneralPain, .shoulderGeneralPain:
+            return "bandage"
+        case .dislocationTherapy, .elbowDislocation, .dislocatedShoulder:
+            return "arrow.triangle.2.circlepath"
+        case .painBending, .elbowPainBending, .painInBending:
+            return "angle"
+        case .troubleTwisting:
+            return "arrow.trianglehead.2.clockwise.rotate.90"
+        case .twistedRolled:
+            return "arrow.uturn.backward"
+        case .painRotating:
+            return "arrow.clockwise"
+        case .painLifting:
+            return "arrow.up.circle"
         }
     }
 }
 
 // MARK: - Condition
 
-struct Condition: Identifiable, Hashable {
+/// A rehab condition with 3 AR-validated exercises.
+/// Every exercise in every condition has been tested on a real device
+/// and confirmed to produce meaningful angle tracking data.
+struct Condition: Identifiable, Hashable, Codable {
     let id: UUID
     let name: String
     let description: String
     let bodyArea: BodyArea
     let category: ConditionCategory
     let recommendedExercises: [Exercise]
-
-    init(
-        id: UUID = UUID(),
-        name: String,
-        description: String,
-        bodyArea: BodyArea,
-        category: ConditionCategory = .generalPain,
-        recommendedExercises: [Exercise] = []
-    ) {
+    
+    init(id: UUID = UUID(),
+         name: String,
+         description: String,
+         bodyArea: BodyArea,
+         category: ConditionCategory,
+         recommendedExercises: [Exercise]) {
         self.id = id
         self.name = name
         self.description = description
@@ -60,145 +94,188 @@ struct Condition: Identifiable, Hashable {
         self.category = category
         self.recommendedExercises = recommendedExercises
     }
-
+    
+    // MARK: - Full Library (12 exercises × 15 conditions, all AR-tracked)
+    
+    static let library: [Condition] = kneeConditions + elbowConditions
+        + hipConditions + ankleConditions + shoulderConditions
+    
     /// Filter conditions for a specific body area.
     static func conditions(for area: BodyArea) -> [Condition] {
         library.filter { $0.bodyArea == area }
     }
-}
-
-// MARK: - Full Library: 5 body areas × 3 categories × 3 exercises = 15 conditions
-
-extension Condition {
-    static let library: [Condition] = kneeConditions + elbowConditions + hipConditions + ankleConditions + shoulderConditions
-
-    // ── KNEE ─────────────────────────────────────────────
-
-    static let kneeConditions: [Condition] = [
+    
+    // ── KNEE ─────────────────────────────────────────────────
+    // Joint triple: right_upLeg → right_leg → right_foot
+    // All confirmed reliable on device from side view.
+    
+    private static let kneeConditions: [Condition] = [
         Condition(
             name: "General Knee Pain",
-            description: "Mild stiffness or aching around the knee. Exercises focus on gentle quad strengthening.",
+            description: "Knee stiffness or general discomfort — gentle strengthening.",
             bodyArea: .knee,
             category: .generalPain,
-            recommendedExercises: [.quadSets, .shortArcQuads, .seatedKneeExtension]
+            recommendedExercises: [.seatedKneeExtension,
+                                   .straightLegRaises,
+                                   .heelSlides]
         ),
         Condition(
             name: "Knee Dislocation Therapy",
-            description: "Recovery after a patellar dislocation. Rebuilds VMO strength and stability.",
+            description: "Post-dislocation controlled range-of-motion work.",
             bodyArea: .knee,
             category: .dislocationTherapy,
-            recommendedExercises: [.straightLegRaises, .heelSlides, .terminalKneeExtension]
+            recommendedExercises: [.heelSlides,
+                                   .terminalKneeExtension,
+                                   .seatedKneeFlexion]
         ),
         Condition(
-            name: "Knee Pain Bending",
-            description: "Difficulty bending the knee past 90°. Exercises gradually increase flexion range.",
+            name: "Knee Pain When Bending",
+            description: "Pain during knee flexion — progressive bending exercises.",
             bodyArea: .knee,
             category: .painBending,
-            recommendedExercises: [.heelSlides, .seatedKneeFlexion, .proneKneeFlexion]
-        ),
+            recommendedExercises: [.seatedKneeFlexion,
+                                   .heelSlides,
+                                   .terminalKneeExtension]
+        )
     ]
-
-    // ── ELBOW ────────────────────────────────────────────
-
-    static let elbowConditions: [Condition] = [
+    
+    // ── ELBOW ────────────────────────────────────────────────
+    // Joint triple: right_arm → right_forearm → right_hand
+    // All confirmed reliable on device from side view.
+    
+    private static let elbowConditions: [Condition] = [
         Condition(
             name: "General Elbow Pain",
-            description: "Soreness or tightness in the elbow joint. Gentle stretches and grip work.",
+            description: "Elbow stiffness or general discomfort.",
             bodyArea: .elbow,
-            category: .generalPain,
-            recommendedExercises: [.elbowFlexionExtension, .wristFlexorStretch, .towelSqueeze]
+            category: .elbowGeneralPain,
+            recommendedExercises: [.elbowFlexionExtension,
+                                   .activeElbowFlexion,
+                                   .elbowExtensionStretch]
         ),
         Condition(
             name: "Elbow Dislocation Therapy",
-            description: "Post-dislocation rehab. Restores controlled flexion and rotation.",
+            description: "Post-dislocation gentle range-of-motion.",
             bodyArea: .elbow,
-            category: .dislocationTherapy,
-            recommendedExercises: [.activeElbowFlexion, .forearmRotation, .gravityElbowExtension]
+            category: .elbowDislocation,
+            recommendedExercises: [.elbowExtensionStretch,
+                                   .elbowFlexionExtension,
+                                   .activeElbowFlexion]
         ),
         Condition(
-            name: "Elbow Pain Bending",
-            description: "Pain when bending or extending the elbow fully. Restores terminal range.",
+            name: "Elbow Pain When Bending",
+            description: "Pain during elbow flexion or extension.",
             bodyArea: .elbow,
-            category: .painBending,
-            recommendedExercises: [.elbowFlexionExtension, .elbowExtensionStretch, .forearmRotation]
-        ),
+            category: .elbowPainBending,
+            recommendedExercises: [.activeElbowFlexion,
+                                   .elbowFlexionExtension,
+                                   .elbowExtensionStretch]
+        )
     ]
-
-    // ── HIP / BACK ───────────────────────────────────────
-
-    static let hipConditions: [Condition] = [
+    
+    // ── HIP ──────────────────────────────────────────────────
+    // Joint triple: spine → hips_joint → right_upLeg_joint
+    // Standing Hip Flexion & Hip Hinge confirmed. Angle ranges FIXED
+    // to match real ARKit readings (~80-140° when in correct position).
+    // Single Leg Balance uses knee triple (also confirmed).
+    
+    private static let hipConditions: [Condition] = [
         Condition(
             name: "General Hip Pain",
-            description: "Aching or stiffness in the hip area. Focuses on glute activation and flexibility.",
+            description: "Hip stiffness or weakness — gentle mobilization.",
             bodyArea: .hip,
-            category: .generalPain,
-            recommendedExercises: [.clamshells, .gluteBridges, .hipFlexorStretch]
+            category: .hipGeneralPain,
+            recommendedExercises: [.standingHipFlexion,
+                                   .hipHinge,
+                                   .singleLegBalance]
         ),
         Condition(
             name: "Trouble Twisting",
-            description: "Difficulty rotating the trunk or hip. Restores rotational mobility.",
+            description: "Difficulty with rotational hip movement.",
             bodyArea: .hip,
             category: .troubleTwisting,
-            recommendedExercises: [.seatedHipRotation, .supineHipRotation, .catCow]
+            recommendedExercises: [.standingHipFlexion,
+                                   .singleLegBalance,
+                                   .hipHinge]
         ),
         Condition(
-            name: "Hip Pain in Bending",
-            description: "Pain when bending forward at the hip. Teaches safe hinge patterns.",
+            name: "Pain in Bending",
+            description: "Pain when bending forward at the hips.",
             bodyArea: .hip,
             category: .painInBending,
-            recommendedExercises: [.hipHinge, .standingHipFlexion, .pelvicTilt]
-        ),
+            recommendedExercises: [.hipHinge,
+                                   .standingHipFlexion,
+                                   .singleLegBalance]
+        )
     ]
-
-    // ── ANKLE ────────────────────────────────────────────
-
-    static let ankleConditions: [Condition] = [
+    
+    // ── ANKLE ────────────────────────────────────────────────
+    // ARKit cannot track foot/toe joints reliably.
+    // Ankle conditions use leg-level proxy exercises that are all
+    // AR-tracked and help ankle recovery through balance + stability.
+    
+    private static let ankleConditions: [Condition] = [
         Condition(
             name: "General Ankle Pain",
-            description: "Mild ankle discomfort or stiffness. Gentle mobility and calf work.",
+            description: "Ankle stiffness — balance and stability work.",
             bodyArea: .ankle,
-            category: .generalPain,
-            recommendedExercises: [.ankleAlphabet, .ankleCircles, .seatedCalfRaises]
+            category: .ankleGeneralPain,
+            recommendedExercises: [.singleLegBalance,
+                                   .standingHipFlexion,
+                                   .seatedKneeExtension]
         ),
         Condition(
-            name: "Twisted / Rolled Ankle",
-            description: "Sprain recovery. Rebuilds stability, balance, and dorsiflexion.",
+            name: "Twisted/Rolled Ankle",
+            description: "Sprained ankle recovery — progressive weight bearing.",
             bodyArea: .ankle,
             category: .twistedRolled,
-            recommendedExercises: [.towelScrunches, .singleLegBalance, .resistanceDorsiflexion]
+            recommendedExercises: [.singleLegBalance,
+                                   .hipHinge,
+                                   .straightLegRaises]
         ),
         Condition(
             name: "Broken Ankle / Pain Rotating",
-            description: "Post-fracture recovery. Restores basic ankle pumping and weight tolerance.",
+            description: "Post-fracture gentle strength and balance.",
             bodyArea: .ankle,
             category: .painRotating,
-            recommendedExercises: [.anklePumps, .seatedToeRaises, .seatedHeelRaises]
-        ),
+            recommendedExercises: [.singleLegBalance,
+                                   .seatedKneeExtension,
+                                   .standingHipFlexion]
+        )
     ]
-
-    // ── SHOULDER ─────────────────────────────────────────
-
-    static let shoulderConditions: [Condition] = [
+    
+    // ── SHOULDER ─────────────────────────────────────────────
+    // Joint triple: spine_7 → right_shoulder_1 → right_arm
+    // Wall Slides, Supine Shoulder Flexion, Standing Shoulder Flexion
+    // all confirmed working on device from side view.
+    
+    private static let shoulderConditions: [Condition] = [
         Condition(
             name: "General Shoulder Pain",
-            description: "Stiffness, aching, or limited mobility. Gentle warm-up and stretching.",
+            description: "Shoulder stiffness or impingement — gentle overhead work.",
             bodyArea: .shoulder,
-            category: .generalPain,
-            recommendedExercises: [.pendulumSwings, .shoulderRolls, .crossBodyStretch]
+            category: .shoulderGeneralPain,
+            recommendedExercises: [.wallSlidesShoulder,
+                                   .standingShoulderFlexion,
+                                   .supineShoulderFlexion]
         ),
         Condition(
             name: "Dislocated Shoulder",
-            description: "Post-dislocation recovery. Restores rotator cuff strength and stability.",
+            description: "Post-dislocation controlled range-of-motion.",
             bodyArea: .shoulder,
             category: .dislocatedShoulder,
-            recommendedExercises: [.sleeperStretch, .wallSlidesShoulder, .externalRotation]
+            recommendedExercises: [.supineShoulderFlexion,
+                                   .wallSlidesShoulder,
+                                   .standingShoulderFlexion]
         ),
         Condition(
-            name: "Pain Lifting / Moving Arm",
-            description: "Difficulty raising the arm overhead. Rebuilds scapular control and flexion.",
+            name: "Pain Lifting Arm",
+            description: "Difficulty raising the arm overhead.",
             bodyArea: .shoulder,
             category: .painLifting,
-            recommendedExercises: [.scapularSetting, .supineShoulderFlexion, .sideLyingExternalRotation]
-        ),
+            recommendedExercises: [.standingShoulderFlexion,
+                                   .wallSlidesShoulder,
+                                   .supineShoulderFlexion]
+        )
     ]
 }

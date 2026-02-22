@@ -238,8 +238,22 @@ struct ScheduleView: View {
     }
 
     private func resolveExerciseFromSlot(_ slot: PlanSlot) -> Exercise? {
-        guard let cond = appState.selectedCondition else { return nil }
-        return cond.recommendedExercises.first(where: { $0.id == slot.exerciseID })
+        let allExercises: [Exercise] = Exercise.kneeExercises
+            + Exercise.elbowExercises + Exercise.shoulderExercises
+            + Exercise.hipExercises
+        return allExercises.first(where: { $0.id == slot.exerciseID })
+            ?? allExercises.first(where: { $0.name == slot.exerciseName })
+    }
+    
+    private func slotTrackingBadge(for slot: PlanSlot) -> some View {
+        // All exercises are now AR-tracked
+        Text("AR")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundColor(.green)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.green.opacity(0.15))
+            .cornerRadius(4)
     }
 
     // MARK: - Setup Cards (initial creation)

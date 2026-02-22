@@ -425,12 +425,22 @@ struct HomeView: View {
     }
 
     private func resolveExercise(for slot: PlanSlot, in plan: DailyPlan) -> Exercise? {
-        for cond in Condition.library {
-            if cond.id == plan.conditionID {
-                return cond.recommendedExercises.first(where: { $0.id == slot.exerciseID })
-            }
-        }
-        return nil
+        let allExercises: [Exercise] = Exercise.kneeExercises
+            + Exercise.elbowExercises + Exercise.shoulderExercises
+            + Exercise.hipExercises
+        return allExercises.first(where: { $0.id == slot.exerciseID })
+            ?? allExercises.first(where: { $0.name == slot.exerciseName })
+    }
+    
+    private func trackingBadge(for slot: PlanSlot) -> some View {
+        // All exercises are AR-tracked
+        Text("AR")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundColor(.green)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.green.opacity(0.15))
+            .cornerRadius(4)
     }
 
     private func homeSlotIcon(_ i: Int) -> String {

@@ -23,28 +23,20 @@ struct SessionIntroView: View {
                     }
                     .padding(.top)
                     
-                    // Tracking mode badge
+                    // Tracking mode badge — all exercises are now AR-tracked
                     if let config = exercise.trackingConfig {
                         HStack(spacing: 6) {
-                            Image(systemName: "camera.metering.center.weighted")
-                                .font(.system(size: 13))
-                            Text("AR Tracked")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("•")
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                                .font(.caption2)
+                            Text("AR Tracked • \(trackingModeLabel(config.mode))")
                                 .font(.caption)
-                            Text(trackingModeLabel(config.mode))
-                                .font(.system(size: 12))
-                            if config.reliability == .marginal {
-                                Text("(marginal)")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.orange)
-                            }
+                                .fontWeight(.medium)
                         }
                         .foregroundColor(.green)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(10)
+                        .background(Color.green.opacity(0.12))
+                        .cornerRadius(8)
                     } else {
                         HStack(spacing: 6) {
                             Image(systemName: "timer")
@@ -226,7 +218,6 @@ struct SessionIntroView: View {
         case .holdDuration:        return "Hold Duration"
         case .rangeOfMotion:       return "Range of Motion"
         case .repetitionCounting:  return "Rep Counting"
-        case .timerOnly:           return "Timer Only"
         }
     }
 }

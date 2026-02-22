@@ -6,30 +6,34 @@ import ARKit
 #endif
 
 public class RehabSessionViewModel: ObservableObject {
+    @Published public var currentAngle: Double = 0
     @Published public var repsCompleted: Int = 0
-    @Published public var currentAngle: Double = 0.0
-    @Published public var bestAngle: Double = 0.0
-    @Published public var angleZone: AngleZone = .aboveTarget
-    @Published public var feedbackMessage: String = "Position yourself in camera"
-    @Published public var isBodyDetected: Bool = false
-    @Published public var debugText: String = "Initializing..."
+    @Published public var isInZone: Bool = false
+    @Published public var feedbackMessage: String = "Position yourself in frame"
     @Published public var formCueText: String = ""
-    @Published public var isTimerMode: Bool = false
-    @Published public var timerSecondsLeft: Int = 0
+    @Published public var trackingQuality: String = "Initializing..."
     @Published public var cameraHint: String = ""
     @Published public var reliabilityBadge: String = ""
+    @Published public var isBodyDetected: Bool = false
+    @Published public var bestAngle: Double = 0
+    @Published public var angleZone: AngleZone = .aboveTarget
+    @Published public var debugText: String = "Initializing..."
+    @Published public var targetAngle: Double = 90
+    @Published public var tolerance: Double = 15
     @Published public var isTrackingQualityGood: Bool = true
     
-    private var engine: RehabEngine
-    private var timerWork: DispatchWorkItem?
+    // All exercises are now AR-tracked — no timer-only mode needed
+    
     private let angleSmoother = AngleSmoother(windowSize: 5)
+    
+    public var engine: RehabEngine
     
     public init(engine: RehabEngine = SimpleRehabEngine()) {
         self.engine = engine
     }
     
-    public func setup(targetAngle: Double, tolerance: Double, holdTime: TimeInterval) {
-        self.engine = SimpleRehabEngine(targetAngle: targetAngle, tolerance: tolerance, requiredHoldTime: holdTime)
+    public func setup(targetAngle: Double, tolerance: Double, holdTime: TimeInterval, repDirection: RepDirection = .increasing, restAngle: Double = 90.0) {
+        self.engine = SimpleRehabEngine(targetAngle: targetAngle, tolerance: tolerance, requiredHoldTime: holdTime, repDirection: repDirection, restAngle: restAngle)
     }
     
     /// Generic 3-joint processing — works for any body area (knee, elbow, hip, shoulder, ankle).
@@ -53,11 +57,11 @@ public class RehabSessionViewModel: ObservableObject {
             } else {
                 switch state.zone {
                 case .belowTarget:
-                    self.feedbackMessage = "Bend a little less"
+                    self.feedbackMessage = "Move more toward target"
                 case .target:
                     self.feedbackMessage = "In target range — hold! ✅"
                 case .aboveTarget:
-                    self.feedbackMessage = "Bend more toward target"
+                    self.feedbackMessage = "Ease back toward target"
                 }
             }
         }
@@ -68,60 +72,13 @@ public class RehabSessionViewModel: ObservableObject {
         processJoints(proximal: hip, joint: knee, distal: ankle)
     }
     
-    /// Start timer-only mode for exercises that can't use skeleton tracking
-    public func startTimerMode(holdSeconds: Int, reps: Int) {
-        DispatchQueue.main.async {
-            self.isTimerMode = true
-            self.timerSecondsLeft = holdSeconds
-            self.feedbackMessage = "Follow the instructions — timer mode"
-        }
-        runTimerRep(holdSeconds: holdSeconds, currentRep: 1, totalReps: reps)
-    }
-    
-    private func runTimerRep(holdSeconds: Int, currentRep: Int, totalReps: Int) {
-        guard currentRep <= totalReps else {
-            DispatchQueue.main.async {
-                self.feedbackMessage = "All reps complete! 🎉"
-            }
-            return
-        }
-        var secondsLeft = holdSeconds
-        DispatchQueue.main.async {
-            self.timerSecondsLeft = secondsLeft
-            self.feedbackMessage = "Rep \(currentRep)/\(totalReps) — Hold for \(secondsLeft)s"
-        }
-        
-        func tick() {
-            let work = DispatchWorkItem { [weak self] in
-                guard let self = self else { return }
-                secondsLeft -= 1
-                if secondsLeft <= 0 {
-                    DispatchQueue.main.async {
-                        self.repsCompleted = currentRep
-                        self.timerSecondsLeft = 0
-                    }
-                    self.runTimerRep(holdSeconds: holdSeconds, currentRep: currentRep + 1, totalReps: totalReps)
-                } else {
-                    DispatchQueue.main.async {
-                        self.timerSecondsLeft = secondsLeft
-                        self.feedbackMessage = "Rep \(currentRep)/\(totalReps) — Hold for \(secondsLeft)s"
-                    }
-                    tick()
-                }
-            }
-            self.timerWork = work
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0, execute: work)
-        }
-        tick()
-    }
-    
     public func bodyLost() {
+        feedbackMessage = "Move back into frame"
+        isInZone = false
         angleSmoother.reset()
-        DispatchQueue.main.async {
-            self.isBodyDetected = false
-            self.feedbackMessage = "Step back so full body is in frame"
-        }
     }
+    
+    // startTimerMode() removed — all exercises are now AR-tracked
     
     public func addDebug(_ msg: String) {
         DispatchQueue.main.async {
@@ -182,24 +139,22 @@ public struct ExerciseARView: View {
                         .cornerRadius(8)
                 }
                 
+                // Camera hint
                 if !viewModel.cameraHint.isEmpty {
-                    Text("📷 \(viewModel.cameraHint)")
+                    Text(viewModel.cameraHint)
                         .font(.caption)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
+                        .foregroundColor(.white.opacity(0.8))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
                         .background(Color.black.opacity(0.5))
-                        .foregroundColor(.white.opacity(0.9))
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                 }
                 
+                // Reliability badge
                 if !viewModel.reliabilityBadge.isEmpty {
                     Text(viewModel.reliabilityBadge)
                         .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.black.opacity(0.4))
                         .foregroundColor(.white.opacity(0.7))
-                        .cornerRadius(4)
                 }
                 
                 if !viewModel.isTrackingQualityGood {
@@ -210,13 +165,6 @@ public struct ExerciseARView: View {
                         .background(Color.orange.opacity(0.7))
                         .foregroundColor(.white)
                         .cornerRadius(6)
-                }
-                
-                if viewModel.isTimerMode && viewModel.timerSecondsLeft > 0 {
-                    Text("\(viewModel.timerSecondsLeft)s")
-                        .font(.system(size: 60, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .shadow(color: .black, radius: 4, x: 0, y: 2)
                 }
                 
                 if viewModel.isBodyDetected {
@@ -288,39 +236,29 @@ public struct ExerciseARView: View {
         }
         .navigationBarBackButtonHidden(true)
         .onAppear {
-            if let exercise = appState.selectedExercise {
-                if let config = exercise.trackingConfig {
-                    // AR tracking mode — use the correct target range from the tracking config
-                    // Tolerance zones widened to account for ARKit's ~18° average error
-                    let lower = config.targetRange.lowerBound
-                    let upper = config.targetRange.upperBound
-                    let targetAngle = (lower + upper) / 2.0
-                    let tolerance = max((upper - lower) / 2.0, 5.0)
-                    viewModel.setup(targetAngle: targetAngle, tolerance: tolerance, holdTime: TimeInterval(exercise.holdSeconds))
-                    if let cue = config.formCues.first {
-                        viewModel.formCueText = cue.description
-                    }
-                    // Camera position hint
-                    switch config.cameraPosition {
-                    case .side:
-                        viewModel.cameraHint = "Best results: place camera to your side"
-                    case .front:
-                        viewModel.cameraHint = "Best results: place camera in front of you"
-                    }
-                    // Reliability badge
-                    switch config.reliability {
-                    case .reliable:
-                        viewModel.reliabilityBadge = "✅ High accuracy tracking"
-                    case .marginal:
-                        viewModel.reliabilityBadge = "⚠️ Approximate tracking — wider tolerance applied"
-                    case .unreliable:
-                        viewModel.reliabilityBadge = ""
-                    }
-                } else {
-                    // Timer-only mode — no AR skeleton tracking
-                    // This exercise can't be reliably measured by ARKit body skeleton
-                    viewModel.startTimerMode(holdSeconds: exercise.holdSeconds, reps: exercise.reps)
-                }
+            // All exercises have tracking configs — configure the engine with correct parameters
+            if let config = appState.selectedExercise?.trackingConfig {
+                let mid = (config.targetRange.lowerBound + config.targetRange.upperBound) / 2.0
+                let tol = (config.targetRange.upperBound - config.targetRange.lowerBound) / 2.0
+                
+                // CRITICAL: Actually configure the engine with exercise-specific values
+                let holdTime: TimeInterval = config.mode == .holdDuration
+                    ? Double(appState.selectedExercise?.holdSeconds ?? 3)
+                    : 2.0
+                viewModel.setup(
+                    targetAngle: mid,
+                    tolerance: tol,
+                    holdTime: holdTime,
+                    repDirection: config.repDirection,
+                    restAngle: config.restAngle
+                )
+                
+                viewModel.targetAngle = mid
+                viewModel.tolerance = tol
+                viewModel.cameraHint = "📷 Best results: place camera to your \(config.cameraPosition.rawValue)"
+                viewModel.reliabilityBadge = config.reliability == .reliable
+                    ? "✅ High accuracy tracking"
+                    : "⚠️ Approximate tracking — wider tolerance applied"
             }
         }
     }
