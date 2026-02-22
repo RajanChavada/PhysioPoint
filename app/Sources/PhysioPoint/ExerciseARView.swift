@@ -13,8 +13,16 @@ public class RehabSessionViewModel: ObservableObject {
     @Published public var feedbackMessage: String = "Position yourself in camera"
     @Published public var isBodyDetected: Bool = false
     @Published public var debugText: String = "Initializing..."
+    @Published public var formCueText: String = ""
+    @Published public var isTimerMode: Bool = false
+    @Published public var timerSecondsLeft: Int = 0
+    @Published public var cameraHint: String = ""
+    @Published public var reliabilityBadge: String = ""
+    @Published public var isTrackingQualityGood: Bool = true
     
     private var engine: RehabEngine
+    private var timerWork: DispatchWorkItem?
+    private let angleSmoother = AngleSmoother(windowSize: 5)
     
     public init(engine: RehabEngine = SimpleRehabEngine()) {
         self.engine = engine
@@ -24,17 +32,20 @@ public class RehabSessionViewModel: ObservableObject {
         self.engine = SimpleRehabEngine(targetAngle: targetAngle, tolerance: tolerance, requiredHoldTime: holdTime)
     }
     
-    public func processJoints(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) {
-        let state = engine.update(hip: hip, knee: knee, ankle: ankle)
+    /// Generic 3-joint processing — works for any body area (knee, elbow, hip, shoulder, ankle).
+    /// Applies temporal smoothing to reduce ARKit frame-to-frame jitter (~±5° → ~±1-2°).
+    public func processJoints(proximal: SIMD3<Float>, joint: SIMD3<Float>, distal: SIMD3<Float>) {
+        let state = engine.update(proximal: proximal, joint: joint, distal: distal)
         let repState = engine.currentRepState
+        let smoothedAngle = angleSmoother.smooth(state.degrees)
         
         DispatchQueue.main.async {
             self.isBodyDetected = true
-            self.currentAngle = state.degrees
+            self.currentAngle = smoothedAngle
             self.angleZone = state.zone
             self.repsCompleted = repState.repsCompleted
-            if self.currentAngle > self.bestAngle {
-                self.bestAngle = self.currentAngle
+            if smoothedAngle > self.bestAngle {
+                self.bestAngle = smoothedAngle
             }
             
             if repState.isHolding {
@@ -52,7 +63,60 @@ public class RehabSessionViewModel: ObservableObject {
         }
     }
     
+    /// Backward-compatible: hip/knee/ankle callers
+    public func processJoints(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) {
+        processJoints(proximal: hip, joint: knee, distal: ankle)
+    }
+    
+    /// Start timer-only mode for exercises that can't use skeleton tracking
+    public func startTimerMode(holdSeconds: Int, reps: Int) {
+        DispatchQueue.main.async {
+            self.isTimerMode = true
+            self.timerSecondsLeft = holdSeconds
+            self.feedbackMessage = "Follow the instructions — timer mode"
+        }
+        runTimerRep(holdSeconds: holdSeconds, currentRep: 1, totalReps: reps)
+    }
+    
+    private func runTimerRep(holdSeconds: Int, currentRep: Int, totalReps: Int) {
+        guard currentRep <= totalReps else {
+            DispatchQueue.main.async {
+                self.feedbackMessage = "All reps complete! 🎉"
+            }
+            return
+        }
+        var secondsLeft = holdSeconds
+        DispatchQueue.main.async {
+            self.timerSecondsLeft = secondsLeft
+            self.feedbackMessage = "Rep \(currentRep)/\(totalReps) — Hold for \(secondsLeft)s"
+        }
+        
+        func tick() {
+            let work = DispatchWorkItem { [weak self] in
+                guard let self = self else { return }
+                secondsLeft -= 1
+                if secondsLeft <= 0 {
+                    DispatchQueue.main.async {
+                        self.repsCompleted = currentRep
+                        self.timerSecondsLeft = 0
+                    }
+                    self.runTimerRep(holdSeconds: holdSeconds, currentRep: currentRep + 1, totalReps: totalReps)
+                } else {
+                    DispatchQueue.main.async {
+                        self.timerSecondsLeft = secondsLeft
+                        self.feedbackMessage = "Rep \(currentRep)/\(totalReps) — Hold for \(secondsLeft)s"
+                    }
+                    tick()
+                }
+            }
+            self.timerWork = work
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0, execute: work)
+        }
+        tick()
+    }
+    
     public func bodyLost() {
+        angleSmoother.reset()
         DispatchQueue.main.async {
             self.isBodyDetected = false
             self.feedbackMessage = "Step back so full body is in frame"
@@ -107,6 +171,53 @@ public struct ExerciseARView: View {
                     .background(feedbackColor.opacity(0.8))
                     .foregroundColor(.white)
                     .cornerRadius(10)
+                
+                if !viewModel.formCueText.isEmpty {
+                    Text("💡 \(viewModel.formCueText)")
+                        .font(.subheadline)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.6))
+                        .foregroundColor(.yellow)
+                        .cornerRadius(8)
+                }
+                
+                if !viewModel.cameraHint.isEmpty {
+                    Text("📷 \(viewModel.cameraHint)")
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.5))
+                        .foregroundColor(.white.opacity(0.9))
+                        .cornerRadius(6)
+                }
+                
+                if !viewModel.reliabilityBadge.isEmpty {
+                    Text(viewModel.reliabilityBadge)
+                        .font(.caption2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.black.opacity(0.4))
+                        .foregroundColor(.white.opacity(0.7))
+                        .cornerRadius(4)
+                }
+                
+                if !viewModel.isTrackingQualityGood {
+                    Text("⚠️ Move to a better lit area for best tracking")
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.7))
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
+                }
+                
+                if viewModel.isTimerMode && viewModel.timerSecondsLeft > 0 {
+                    Text("\(viewModel.timerSecondsLeft)s")
+                        .font(.system(size: 60, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(color: .black, radius: 4, x: 0, y: 2)
+                }
                 
                 if viewModel.isBodyDetected {
                     Text(String(format: "Angle: %.1f°", viewModel.currentAngle))
@@ -178,11 +289,38 @@ public struct ExerciseARView: View {
         .navigationBarBackButtonHidden(true)
         .onAppear {
             if let exercise = appState.selectedExercise {
-                let lower = exercise.targetAngleRange.lowerBound
-                let upper = exercise.targetAngleRange.upperBound
-                let targetAngle = (lower + upper) / 2.0
-                let tolerance = max((upper - lower) / 2.0, 5.0)
-                viewModel.setup(targetAngle: targetAngle, tolerance: tolerance, holdTime: TimeInterval(exercise.holdSeconds))
+                if let config = exercise.trackingConfig {
+                    // AR tracking mode — use the correct target range from the tracking config
+                    // Tolerance zones widened to account for ARKit's ~18° average error
+                    let lower = config.targetRange.lowerBound
+                    let upper = config.targetRange.upperBound
+                    let targetAngle = (lower + upper) / 2.0
+                    let tolerance = max((upper - lower) / 2.0, 5.0)
+                    viewModel.setup(targetAngle: targetAngle, tolerance: tolerance, holdTime: TimeInterval(exercise.holdSeconds))
+                    if let cue = config.formCues.first {
+                        viewModel.formCueText = cue.description
+                    }
+                    // Camera position hint
+                    switch config.cameraPosition {
+                    case .side:
+                        viewModel.cameraHint = "Best results: place camera to your side"
+                    case .front:
+                        viewModel.cameraHint = "Best results: place camera in front of you"
+                    }
+                    // Reliability badge
+                    switch config.reliability {
+                    case .reliable:
+                        viewModel.reliabilityBadge = "✅ High accuracy tracking"
+                    case .marginal:
+                        viewModel.reliabilityBadge = "⚠️ Approximate tracking — wider tolerance applied"
+                    case .unreliable:
+                        viewModel.reliabilityBadge = ""
+                    }
+                } else {
+                    // Timer-only mode — no AR skeleton tracking
+                    // This exercise can't be reliably measured by ARKit body skeleton
+                    viewModel.startTimerMode(holdSeconds: exercise.holdSeconds, reps: exercise.reps)
+                }
             }
         }
     }
@@ -190,7 +328,7 @@ public struct ExerciseARView: View {
     @ViewBuilder
     private var arOrFallback: some View {
         #if os(iOS) && !targetEnvironment(simulator)
-        ARViewRepresentable(viewModel: viewModel)
+        ARViewRepresentable(viewModel: viewModel, trackingConfig: appState.selectedExercise?.trackingConfig)
             .edgesIgnoringSafeArea(.all)
             .onAppear {
                 viewModel.addDebug("iOS path: ARView loaded, checking body support...")
@@ -256,10 +394,12 @@ public struct ExerciseARView: View {
 #if os(iOS) && !targetEnvironment(simulator)
 struct ARViewRepresentable: UIViewRepresentable {
     let viewModel: RehabSessionViewModel
+    let trackingConfig: JointTrackingConfig?
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: false)
         context.coordinator.arView = arView
+        context.coordinator.activeConfig = trackingConfig
         
         // Setup the RealityKit scene IMMEDIATELY so entities are ready
         context.coordinator.setupSceneNow(in: arView)
@@ -278,7 +418,10 @@ struct ARViewRepresentable: UIViewRepresentable {
         return arView
     }
     
-    func updateUIView(_ uiView: ARView, context: Context) {}
+    func updateUIView(_ uiView: ARView, context: Context) {
+        // Keep the active tracking config in sync when the exercise changes
+        context.coordinator.activeConfig = trackingConfig
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(viewModel: viewModel)
@@ -287,6 +430,9 @@ struct ARViewRepresentable: UIViewRepresentable {
     class Coordinator: NSObject, ARSessionDelegate {
         let viewModel: RehabSessionViewModel
         weak var arView: ARView?
+        
+        /// The active exercise's tracking config — determines which joints to track
+        var activeConfig: JointTrackingConfig?
         
         private var sceneAnchor: AnchorEntity?
         private var isSetUp = false
@@ -302,37 +448,38 @@ struct ARViewRepresentable: UIViewRepresentable {
         private var boneEntities: [String: ModelEntity] = [:]
         private var didResolve = false
         
-        // The joints we want to visualize
+        // The joints we want to visualize (smaller orbs for better accuracy perception)
+        // Reduced from 0.06 → 0.025 to minimize visual confusion from ARKit joint position error
         static let trackedJoints: [(name: String, color: UIColor, radius: Float)] = [
             // Hips / Root
-            ("hips_joint",                .white,        0.06),
+            ("hips_joint",                .white,        0.03),
             // Right leg
-            ("right_upLeg_joint",         .green,        0.06),
-            ("right_leg_joint",           .yellow,       0.06),
-            ("right_foot_joint",          .red,          0.05),
-            ("right_toes_joint",          .red,          0.03),
+            ("right_upLeg_joint",         .green,        0.03),
+            ("right_leg_joint",           .yellow,       0.03),
+            ("right_foot_joint",          .red,          0.025),
+            ("right_toes_joint",          .red,          0.015),
             // Left leg
-            ("left_upLeg_joint",          .green,        0.06),
-            ("left_leg_joint",            .yellow,       0.06),
-            ("left_foot_joint",           .red,          0.05),
-            ("left_toes_joint",           .red,          0.03),
+            ("left_upLeg_joint",          .green,        0.03),
+            ("left_leg_joint",            .yellow,       0.03),
+            ("left_foot_joint",           .red,          0.025),
+            ("left_toes_joint",           .red,          0.015),
             // Spine
-            ("spine_1_joint",             .cyan,         0.04),
-            ("spine_4_joint",             .cyan,         0.04),
-            ("spine_7_joint",             .cyan,         0.04),
+            ("spine_1_joint",             .cyan,         0.02),
+            ("spine_4_joint",             .cyan,         0.02),
+            ("spine_7_joint",             .cyan,         0.02),
             // Neck & Head
-            ("neck_1_joint",              .cyan,         0.04),
-            ("head_joint",                .magenta,      0.07),
+            ("neck_1_joint",              .cyan,         0.02),
+            ("head_joint",                .magenta,      0.035),
             // Right arm
-            ("right_shoulder_1_joint",    .orange,       0.05),
-            ("right_arm_joint",           .orange,       0.05),
-            ("right_forearm_joint",        .orange,      0.05),
-            ("right_hand_joint",          .orange,       0.04),
+            ("right_shoulder_1_joint",    .orange,       0.025),
+            ("right_arm_joint",           .orange,       0.025),
+            ("right_forearm_joint",        .orange,      0.025),
+            ("right_hand_joint",          .orange,       0.02),
             // Left arm
-            ("left_shoulder_1_joint",     .orange,       0.05),
-            ("left_arm_joint",            .orange,       0.05),
-            ("left_forearm_joint",         .orange,      0.05),
-            ("left_hand_joint",           .orange,       0.04),
+            ("left_shoulder_1_joint",     .orange,       0.025),
+            ("left_arm_joint",            .orange,       0.025),
+            ("left_forearm_joint",         .orange,      0.025),
+            ("left_hand_joint",           .orange,       0.02),
         ]
         
         // Bones: pairs of joints to connect with lines
@@ -426,8 +573,13 @@ struct ARViewRepresentable: UIViewRepresentable {
         
         func session(_ session: ARSession, didUpdate frame: ARFrame) {
             frameCount += 1
+            // Validate tracking quality before counting any data
+            let isGoodTracking = frame.camera.trackingState == .normal
+            DispatchQueue.main.async { [weak self] in
+                self?.viewModel.isTrackingQualityGood = isGoodTracking
+            }
             if frameCount % 60 == 0 {
-                viewModel.addDebug("F:\(frameCount) B:\(bodyFrameCount) tracking")
+                viewModel.addDebug("F:\(frameCount) B:\(bodyFrameCount) quality:\(isGoodTracking ? "✅" : "⚠️")")
             }
         }
         
@@ -486,17 +638,43 @@ struct ARViewRepresentable: UIViewRepresentable {
             
             passCount += 1
             
-            // Extract right leg positions for the rehab engine
-            if let hipPos = worldPositions["right_upLeg_joint"],
-               let kneePos = worldPositions["right_leg_joint"],
-               let anklePos = worldPositions["right_foot_joint"] {
-                viewModel.processJoints(hip: hipPos, knee: kneePos, ankle: anklePos)
+            // Use the tracking config to select the correct 3 joints for the active exercise.
+            // This is what makes elbow/shoulder/hip exercises use the right joints instead of
+            // always falling back to knee (right_upLeg → right_leg → right_foot).
+            guard let config = activeConfig else {
+                // Timer-only exercise — no angle tracking needed, just update skeleton visuals
+                if passCount <= 3 {
+                    viewModel.addDebug("⏱ Timer mode — skeleton visible, no angle tracking")
+                }
+                updateSkeletonVisuals(worldPositions: worldPositions)
+                return
+            }
+            
+            let proximalName = config.proximalJoint
+            let middleName   = config.middleJoint
+            let distalName   = config.distalJoint
+            
+            if let proximalPos = worldPositions[proximalName],
+               let middlePos  = worldPositions[middleName],
+               let distalPos  = worldPositions[distalName] {
+                viewModel.processJoints(proximal: proximalPos, joint: middlePos, distal: distalPos)
                 
                 if passCount <= 3 || passCount % 120 == 0 {
-                    viewModel.addDebug("✅ #\(passCount) joints:\(worldPositions.count) knee:(\(String(format: "%.2f,%.2f,%.2f", kneePos.x, kneePos.y, kneePos.z)))")
+                    viewModel.addDebug("✅ #\(passCount) tracking: \(proximalName)→\(middleName)→\(distalName) angle:\(String(format: "%.1f°", viewModel.currentAngle))")
+                }
+            } else {
+                // Could not resolve one or more joints — log which ones are missing
+                if passCount <= 5 {
+                    let missing = [proximalName, middleName, distalName].filter { worldPositions[$0] == nil }
+                    viewModel.addDebug("⚠️ Missing joints: \(missing.joined(separator: ", "))")
                 }
             }
             
+            // Update skeleton visualization
+            updateSkeletonVisuals(worldPositions: worldPositions)
+        }
+        
+        private func updateSkeletonVisuals(worldPositions: [String: SIMD3<Float>]) {
             // Update all visuals on main thread
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
@@ -509,15 +687,16 @@ struct ARViewRepresentable: UIViewRepresentable {
                     entity.position = pos
                 }
                 
-                // Right knee sphere color changes based on angle zone
-                if let kneeEntity = self.jointEntities["right_leg_joint"] {
+                // Middle joint sphere color changes based on angle zone
+                if let config = self.activeConfig,
+                   let middleEntity = self.jointEntities[config.middleJoint] {
                     let color: UIColor
                     switch self.viewModel.angleZone {
                     case .belowTarget: color = .systemOrange
                     case .target:      color = .systemGreen
                     case .aboveTarget: color = .white
                     }
-                    kneeEntity.model?.materials = [UnlitMaterial(color: color)]
+                    middleEntity.model?.materials = [UnlitMaterial(color: color)]
                 }
                 
                 // Draw bone lines
@@ -536,10 +715,10 @@ struct ARViewRepresentable: UIViewRepresentable {
             let dist = simd_distance(from, to)
             guard dist > 0.001 else { return }
             
-            let thickness: Float = 0.02
+            let thickness: Float = 0.012  // Thinner lines to match smaller orbs
             entity.model = ModelComponent(
                 mesh: .generateBox(size: [thickness, dist, thickness], cornerRadius: thickness / 2),
-                materials: [UnlitMaterial(color: UIColor.cyan.withAlphaComponent(0.6))]
+                materials: [UnlitMaterial(color: UIColor.cyan.withAlphaComponent(0.5))]
             )
             entity.position = (from + to) / 2.0
             let dir = normalize(to - from)

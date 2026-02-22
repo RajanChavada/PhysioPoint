@@ -372,7 +372,7 @@ struct HomeView: View {
             } else {
                 Button {
                     appState.activeSlotID = slot.id
-                    setConditionFromPlan(plan)
+                    setConditionFromPlan(plan, slot: slot)
                     appState.navigationPath.append("SessionIntro")
                 } label: {
                     Text("Start")
@@ -387,12 +387,16 @@ struct HomeView: View {
         .padding(.vertical, 6)
     }
 
-    private func setConditionFromPlan(_ plan: DailyPlan) {
+    private func setConditionFromPlan(_ plan: DailyPlan, slot: PlanSlot? = nil) {
         // Find the matching condition and set it + exercise
         for cond in Condition.library {
             if cond.id == plan.conditionID {
                 appState.selectedCondition = cond
-                appState.selectedExercise = cond.recommendedExercises.first
+                if let slot = slot {
+                    appState.selectedExercise = cond.recommendedExercises.first(where: { $0.id == slot.exerciseID }) ?? cond.recommendedExercises.first
+                } else {
+                    appState.selectedExercise = cond.recommendedExercises.first
+                }
                 return
             }
         }

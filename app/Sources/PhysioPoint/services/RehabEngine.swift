@@ -18,8 +18,18 @@ public struct RepState {
 }
 
 public protocol RehabEngine {
-    func update(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> AngleState
+    /// Generic 3-joint update: proximal→joint→distal (works for any body area).
+    func update(proximal: SIMD3<Float>, joint: SIMD3<Float>, distal: SIMD3<Float>) -> AngleState
     var currentRepState: RepState { get }
+
+    /// Backward-compatible alias for knee-specific callers.
+    func update(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> AngleState
+}
+
+extension RehabEngine {
+    public func update(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> AngleState {
+        update(proximal: hip, joint: knee, distal: ankle)
+    }
 }
 
 public class SimpleRehabEngine: RehabEngine {
@@ -42,8 +52,8 @@ public class SimpleRehabEngine: RehabEngine {
         return RepState(repsCompleted: repsCompleted, isHolding: holdStartTime != nil && isCurrentlyInTargetZone)
     }
     
-    public func update(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> AngleState {
-        let degrees = AngleMath.computeKneeFlexionAngle(hip: hip, knee: knee, ankle: ankle)
+    public func update(proximal: SIMD3<Float>, joint: SIMD3<Float>, distal: SIMD3<Float>) -> AngleState {
+        let degrees = AngleMath.computeJointAngle(proximal: proximal, joint: joint, distal: distal)
         
         let zone: AngleZone
         if degrees < (targetAngle - tolerance) {

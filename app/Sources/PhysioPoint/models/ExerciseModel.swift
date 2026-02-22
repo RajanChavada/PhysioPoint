@@ -641,13 +641,13 @@ extension Exercise {
     )
 }
 
-// MARK: - Legacy Accessors (backward compat for old code)
+// MARK: - Legacy Accessors (backward compat — now AR-trackable only)
 
 extension Exercise {
     static let kneeFlexionExercises: [Exercise] = [.heelSlides, .seatedKneeFlexion, .proneKneeFlexion]
     static let kneeExtensionExercises: [Exercise] = [.straightLegRaises, .quadSets, .terminalKneeExtension]
-    static let shoulderExercises: [Exercise] = [.pendulumSwings, .sleeperStretch, .shoulderRolls]
-    static let ankleExercises: [Exercise] = [.ankleAlphabet, .ankleCircles, .seatedCalfRaises]
-    static let hipExercises: [Exercise] = [.clamshells, .gluteBridges, .hipFlexorStretch]
-    static let elbowExercises: [Exercise] = [.elbowFlexionExtension, .wristFlexorStretch, .towelSqueeze]
+    static let shoulderExercises: [Exercise] = [.shoulderRolls, .wallSlidesShoulder, .externalRotation]
+    static let ankleExercises: [Exercise] = [.singleLegBalance, .standingHipFlexion, .seatedKneeExtension]
+    static let hipExercises: [Exercise] = [.clamshells, .gluteBridges, .standingHipFlexion]
+    static let elbowExercises: [Exercise] = [.elbowFlexionExtension, .activeElbowFlexion, .gravityElbowExtension]
 }
