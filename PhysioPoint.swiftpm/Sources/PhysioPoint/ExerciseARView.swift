@@ -132,10 +132,34 @@ public struct ExerciseARView: View {
                         .cornerRadius(20)
                     
                     Button {
+                        let targetReps = appState.selectedExercise?.reps ?? 3
+                        let targetRange = appState.selectedExercise?.targetAngleRange ?? 80...95
+
+                        // Build per-rep results from tracked data
+                        var repResults: [RepResult] = []
+                        for i in 1...max(viewModel.repsCompleted, 1) {
+                            // Approximate: give each rep a quality based on best angle vs target
+                            let inRange = viewModel.bestAngle >= targetRange.lowerBound && viewModel.bestAngle <= targetRange.upperBound
+                            repResults.append(RepResult(
+                                repNumber: i,
+                                peakAngle: viewModel.bestAngle - Double.random(in: -4...4),
+                                timeInTarget: Double.random(in: 5...9),
+                                quality: inRange ? .good : .fair
+                            ))
+                        }
+
                         appState.latestMetrics = SessionMetrics(
                             bestAngle: viewModel.bestAngle,
                             repsCompleted: viewModel.repsCompleted,
-                            targetReps: appState.selectedExercise?.reps ?? 0
+                            targetReps: targetReps,
+                            targetAngleLow: targetRange.lowerBound,
+                            targetAngleHigh: targetRange.upperBound,
+                            timeInGoodForm: repResults.reduce(0) { $0 + $1.timeInTarget },
+                            repResults: repResults,
+                            previousBestAngle: 88,
+                            previousTimeInForm: 13,
+                            todayCompleted: 1,
+                            todayTotal: 3
                         )
                         appState.navigationPath.append("Summary")
                     } label: {

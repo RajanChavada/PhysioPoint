@@ -16,31 +16,31 @@ let bodyRegions: [NormalizedBodyRegion] = [
     NormalizedBodyRegion(
         area: .shoulder,
         label: "Shoulders",
-        center: CGPoint(x: 0.50, y: 0.19),
+        center: CGPoint(x: 0.50, y: 0.18),
         radius: 0.14
     ),
     NormalizedBodyRegion(
         area: .elbow,
         label: "Elbows",
-        center: CGPoint(x: 0.50, y: 0.38),
+        center: CGPoint(x: 0.50, y: 0.36),
         radius: 0.10
     ),
     NormalizedBodyRegion(
         area: .hip,
         label: "Hips",
-        center: CGPoint(x: 0.50, y: 0.48),
+        center: CGPoint(x: 0.50, y: 0.47),
         radius: 0.12
     ),
     NormalizedBodyRegion(
         area: .knee,
         label: "Knees",
-        center: CGPoint(x: 0.50, y: 0.66),
+        center: CGPoint(x: 0.50, y: 0.65),
         radius: 0.10
     ),
     NormalizedBodyRegion(
         area: .ankle,
         label: "Ankles",
-        center: CGPoint(x: 0.50, y: 0.87),
+        center: CGPoint(x: 0.50, y: 0.86),
         radius: 0.08
     ),
 ]
@@ -51,88 +51,128 @@ struct AdaptiveBodyMapView: View {
     let onSelect: (BodyArea) -> Void
     @State private var tappedArea: BodyArea? = nil
 
+    /// The body image has roughly a 0.45 width-to-height aspect ratio.
+    private let imageAspect: CGFloat = 0.45
+
     var body: some View {
         GeometryReader { geo in
-            let imageAspect: CGFloat = 0.45
-            let viewAspect = geo.size.width / geo.size.height
+            bodyContent(
+                availW: geo.size.width,
+                availH: geo.size.height
+            )
+        }
+    }
 
-            let imgW = viewAspect > imageAspect ? geo.size.height * imageAspect : geo.size.width
-            let imgH = viewAspect > imageAspect ? geo.size.height : geo.size.width / imageAspect
-            let offX = (geo.size.width - imgW) / 2
-            let offY = (geo.size.height - imgH) / 2
+    // MARK: - Layout Helpers
 
-            ZStack {
-                // Body silhouette — transparent-bg outline image
-                BundledImage("body_front", maxHeight: imgH)
-                    .frame(width: imgW, height: imgH)
-                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
-                    .opacity(0.55)
+    private func fittedWidth(_ availW: CGFloat, _ availH: CGFloat) -> CGFloat {
+        if availW / max(availH, 1) > imageAspect {
+            return availH * imageAspect
+        } else {
+            return availW
+        }
+    }
 
-                // Tappable zone circles
-                ForEach(bodyRegions) { region in
-                    let cx = offX + imgW * region.center.x
-                    let cy = offY + imgH * region.center.y
-                    let r  = imgW * region.radius
-                    let isSelected = tappedArea == region.area
+    private func fittedHeight(_ availW: CGFloat, _ availH: CGFloat) -> CGFloat {
+        if availW / max(availH, 1) > imageAspect {
+            return availH
+        } else {
+            return availW / imageAspect
+        }
+    }
 
-                    ZStack {
-                        // Glow behind selected circle
-                        if isSelected {
-                            Circle()
-                                .fill(
-                                    RadialGradient(
-                                        colors: [PPColor.vitalityTeal.opacity(0.45), PPColor.vitalityTeal.opacity(0)],
-                                        center: .center,
-                                        startRadius: 0,
-                                        endRadius: r * 1.4
-                                    )
-                                )
-                                .frame(width: r * 3.0, height: r * 3.0)
-                                .transition(.scale.combined(with: .opacity))
-                        }
+    private func offsetX(_ availW: CGFloat, _ availH: CGFloat) -> CGFloat {
+        (availW - fittedWidth(availW, availH)) / 2
+    }
 
-                        // The circle itself
-                        Circle()
-                            .fill(
-                                isSelected
-                                    ? PPColor.vitalityTeal.opacity(0.25)
-                                    : PPColor.actionBlue.opacity(0.06)
-                            )
-                            .frame(width: r * 2, height: r * 2)
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        isSelected ? PPColor.vitalityTeal : PPColor.actionBlue.opacity(0.25),
-                                        lineWidth: isSelected ? 2 : 1
-                                    )
-                            )
-                            .overlay(
-                                // Checkmark when selected, label when not
-                                Group {
-                                    if isSelected {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: r * 0.5, weight: .bold))
-                                            .foregroundColor(.white)
-                                    } else {
-                                        Text(region.label)
-                                            .font(.system(size: max(r * 0.3, 9), weight: .medium))
-                                            .foregroundColor(PPColor.actionBlue.opacity(0.7))
-                                            .minimumScaleFactor(0.5)
-                                    }
-                                }
-                            )
-                    }
-                    .contentShape(Circle())
-                    .position(x: cx, y: cy)
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            tappedArea = region.area
-                        }
-                        onSelect(region.area)
-                    }
-                }
+    private func offsetY(_ availW: CGFloat, _ availH: CGFloat) -> CGFloat {
+        (availH - fittedHeight(availW, availH)) / 2
+    }
+
+    // MARK: - Body Content
+
+    private func bodyContent(availW: CGFloat, availH: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            // Body silhouette
+            BundledImage("body_front", maxHeight: fittedHeight(availW, availH))
+                .frame(width: fittedWidth(availW, availH), height: fittedHeight(availW, availH))
+                .clipped()
+                .opacity(0.50)
+                .offset(x: offsetX(availW, availH), y: offsetY(availW, availH))
+
+            // Tappable zone circles
+            ForEach(bodyRegions) { region in
+                regionCircle(
+                    region: region,
+                    fw: fittedWidth(availW, availH),
+                    fh: fittedHeight(availW, availH),
+                    ox: offsetX(availW, availH),
+                    oy: offsetY(availW, availH)
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: availW, height: availH)
+    }
+
+    // MARK: - Region Circle
+
+    private func regionCircle(region: NormalizedBodyRegion, fw: CGFloat, fh: CGFloat, ox: CGFloat, oy: CGFloat) -> some View {
+        ZStack {
+            // Glow behind selected circle
+            if tappedArea == region.area {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [PPColor.vitalityTeal.opacity(0.45), PPColor.vitalityTeal.opacity(0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: fw * region.radius * 1.4
+                        )
+                    )
+                    .frame(width: fw * region.radius * 3.0, height: fw * region.radius * 3.0)
+                    .transition(.scale.combined(with: .opacity))
+            }
+
+            // The circle itself
+            Circle()
+                .fill(
+                    tappedArea == region.area
+                        ? PPColor.vitalityTeal.opacity(0.25)
+                        : PPColor.actionBlue.opacity(0.06)
+                )
+                .frame(width: fw * region.radius * 2, height: fw * region.radius * 2)
+                .overlay(
+                    Circle()
+                        .stroke(
+                            tappedArea == region.area ? PPColor.vitalityTeal : PPColor.actionBlue.opacity(0.25),
+                            lineWidth: tappedArea == region.area ? 2 : 1
+                        )
+                )
+                .overlay(
+                    Group {
+                        if tappedArea == region.area {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: fw * region.radius * 0.5, weight: .bold))
+                                .foregroundColor(.white)
+                        } else {
+                            Text(region.label)
+                                .font(.system(size: max(fw * region.radius * 0.35, 10), weight: .medium))
+                                .foregroundColor(PPColor.actionBlue.opacity(0.7))
+                                .minimumScaleFactor(0.5)
+                        }
+                    }
+                )
+        }
+        .contentShape(Circle())
+        .position(
+            x: ox + fw * region.center.x,
+            y: oy + fh * region.center.y
+        )
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                tappedArea = region.area
+            }
+            onSelect(region.area)
         }
     }
 }
