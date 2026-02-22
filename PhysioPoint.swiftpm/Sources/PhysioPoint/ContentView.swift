@@ -358,9 +358,31 @@ struct HomeView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
-                Text(slot.exerciseName)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Text(slot.exerciseName)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    // Tracking badge
+                    if let ex = resolveExercise(for: slot, in: plan) {
+                        if ex.trackingConfig != nil {
+                            Text("AR")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.green)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.12))
+                                .cornerRadius(4)
+                        } else {
+                            Text("TIMER")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.12))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
             }
 
             Spacer()
@@ -400,6 +422,15 @@ struct HomeView: View {
                 return
             }
         }
+    }
+
+    private func resolveExercise(for slot: PlanSlot, in plan: DailyPlan) -> Exercise? {
+        for cond in Condition.library {
+            if cond.id == plan.conditionID {
+                return cond.recommendedExercises.first(where: { $0.id == slot.exerciseID })
+            }
+        }
+        return nil
     }
 
     private func homeSlotIcon(_ i: Int) -> String {

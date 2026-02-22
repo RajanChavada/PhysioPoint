@@ -23,6 +23,44 @@ struct SessionIntroView: View {
                     }
                     .padding(.top)
                     
+                    // Tracking mode badge
+                    if let config = exercise.trackingConfig {
+                        HStack(spacing: 6) {
+                            Image(systemName: "camera.metering.center.weighted")
+                                .font(.system(size: 13))
+                            Text("AR Tracked")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("•")
+                                .font(.caption)
+                            Text(trackingModeLabel(config.mode))
+                                .font(.system(size: 12))
+                            if config.reliability == .marginal {
+                                Text("(marginal)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(10)
+                    } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: "timer")
+                                .font(.system(size: 13))
+                            Text("Timer-Guided")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("• Follow the steps below")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(10)
+                    }
+                    
                     Text(exercise.visualDescription)
                         .font(.body)
                         .multilineTextAlignment(.center)
@@ -78,6 +116,23 @@ struct SessionIntroView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.purple.opacity(0.08))
                         .cornerRadius(16)
+                        .padding(.horizontal)
+                    }
+                    
+                    // Camera position hint
+                    if let config = exercise.trackingConfig {
+                        HStack(spacing: 8) {
+                            Image(systemName: config.cameraPosition == .side ? "ipad.landscape" : "ipad")
+                                .font(.system(size: 14))
+                            Text("Best camera position: \(config.cameraPosition == .side ? "Side view" : "Front view")")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue.opacity(0.06))
+                        .cornerRadius(12)
                         .padding(.horizontal)
                     }
                     
@@ -163,5 +218,15 @@ struct SessionIntroView: View {
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
         .padding(.horizontal)
+    }
+    
+    private func trackingModeLabel(_ mode: TrackingMode) -> String {
+        switch mode {
+        case .angleBased:          return "Angle-Based"
+        case .holdDuration:        return "Hold Duration"
+        case .rangeOfMotion:       return "Range of Motion"
+        case .repetitionCounting:  return "Rep Counting"
+        case .timerOnly:           return "Timer Only"
+        }
     }
 }

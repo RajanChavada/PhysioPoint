@@ -296,6 +296,13 @@ extension Exercise {
                 formCues: [FormCue(description: "Elbow stays against body", jointToWatch: "right_arm_joint")],
                 cameraPosition: .side, reliability: .marginal
             )
+        case "Standing Shoulder Flexion":
+            return JointTrackingConfig(
+                proximalJoint: "spine_7_joint", middleJoint: "right_shoulder_1_joint", distalJoint: "right_arm_joint",
+                mode: .rangeOfMotion, targetRange: 50...140,
+                formCues: [FormCue(description: "Torso stays upright", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side, reliability: .reliable
+            )
 
         // Timer-only shoulder exercises (occluded or not angle-based)
         case "Cross-Body Stretch":

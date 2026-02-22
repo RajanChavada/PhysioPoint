@@ -639,6 +639,18 @@ extension Exercise {
         ],
         caregiverTip: "Most effective for rotator cuff strength after dislocation or impingement."
     )
+
+    static let standingShoulderFlexion = Exercise(
+        name: "Standing Shoulder Flexion", bodyArea: .shoulder,
+        visualDescription: "Stand with arm at your side. Raise the arm forward and upward as high as comfortable.",
+        targetAngleRange: 90...150, holdSeconds: 3, reps: 10,
+        steps: [
+            ExerciseStep(stepNumber: 1, title: "Stand", instruction: "Stand upright with the affected arm at your side, palm facing in."),
+            ExerciseStep(stepNumber: 2, title: "Raise", instruction: "Lift your arm forward and upward as high as comfortable."),
+            ExerciseStep(stepNumber: 3, title: "Hold & lower", instruction: "Hold 3 seconds at the top, then slowly lower."),
+        ],
+        caregiverTip: "Stand at the side to guide if needed. Encourage a slow, controlled arc."
+    )
 }
 
 // MARK: - Legacy Accessors (backward compat — now AR-trackable only)
@@ -646,7 +658,7 @@ extension Exercise {
 extension Exercise {
     static let kneeFlexionExercises: [Exercise] = [.heelSlides, .seatedKneeFlexion, .proneKneeFlexion]
     static let kneeExtensionExercises: [Exercise] = [.straightLegRaises, .quadSets, .terminalKneeExtension]
-    static let shoulderExercises: [Exercise] = [.shoulderRolls, .wallSlidesShoulder, .externalRotation]
+    static let shoulderExercises: [Exercise] = [.shoulderRolls, .wallSlidesShoulder, .externalRotation, .supineShoulderFlexion, .sideLyingExternalRotation, .standingShoulderFlexion]
     static let ankleExercises: [Exercise] = [.singleLegBalance, .standingHipFlexion, .seatedKneeExtension]
     static let hipExercises: [Exercise] = [.clamshells, .gluteBridges, .standingHipFlexion]
     static let elbowExercises: [Exercise] = [.elbowFlexionExtension, .activeElbowFlexion, .gravityElbowExtension]

@@ -133,9 +133,31 @@ struct ScheduleView: View {
                     // Editable time picker (even in saved mode)
                     savedTimePicker(slot: slot)
                 }
-                Text(slot.exerciseName)
-                    .font(.system(size: 13))
-                    .foregroundColor(PPColor.recoveryIndigo)
+                HStack(spacing: 6) {
+                    Text(slot.exerciseName)
+                        .font(.system(size: 13))
+                        .foregroundColor(PPColor.recoveryIndigo)
+                    // Tracking mode badge
+                    if let ex = resolveExerciseFromSlot(slot) {
+                        if ex.trackingConfig != nil {
+                            Text("AR")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.green)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.12))
+                                .cornerRadius(4)
+                        } else {
+                            Text("TIMER")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.12))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
                 if slot.isCompleted {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
@@ -213,6 +235,11 @@ struct ScheduleView: View {
             }
         }
         appState.navigationPath.append("SessionIntro")
+    }
+
+    private func resolveExerciseFromSlot(_ slot: PlanSlot) -> Exercise? {
+        guard let cond = appState.selectedCondition else { return nil }
+        return cond.recommendedExercises.first(where: { $0.id == slot.exerciseID })
     }
 
     // MARK: - Setup Cards (initial creation)
