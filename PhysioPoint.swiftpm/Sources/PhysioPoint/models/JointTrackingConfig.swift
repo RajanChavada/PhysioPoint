@@ -4,7 +4,7 @@ import Foundation
 
 /// Defines how the AR engine should interpret the angle measurement for a given exercise.
 /// Labels are for educational demo only — not medical prescriptions.
-enum TrackingMode: String, Hashable, Codable {
+public enum TrackingMode: String, Hashable, Codable {
     case angleBased          // Measure joint angle, count reps when held in zone
     case holdDuration        // Hold a position for N seconds (isometric)
     case rangeOfMotion       // Track range through a movement arc
@@ -14,7 +14,7 @@ enum TrackingMode: String, Hashable, Codable {
 // MARK: - Camera Position
 
 /// Recommended camera placement for best ARKit tracking accuracy.
-enum CameraPosition: String, Codable, Hashable {
+public enum CameraPosition: String, Codable, Hashable {
     case side   // Side view — best for sagittal plane movements (knee, elbow, shoulder)
     case front  // Front view — best for frontal plane movements (balance)
 }
@@ -22,7 +22,7 @@ enum CameraPosition: String, Codable, Hashable {
 // MARK: - Tracking Reliability
 
 /// ARKit tracking reliability tier based on real-device testing.
-enum TrackingReliability: String, Hashable, Codable {
+public enum TrackingReliability: String, Hashable, Codable {
     case reliable   // Confirmed working on device (~3-8° error)
     case marginal   // Works with wider tolerances (~10-20° error)
 }
@@ -31,7 +31,7 @@ enum TrackingReliability: String, Hashable, Codable {
 
 /// Which direction the angle moves during the "active" phase of the exercise.
 /// Used by the phase-based rep counter to know when a rep is complete.
-enum RepDirection: String, Hashable, Codable {
+public enum RepDirection: String, Hashable, Codable {
     case increasing  // Angle goes UP during active phase (e.g. knee extension: 90° → 180°)
     case decreasing  // Angle goes DOWN during active phase (e.g. hip flexion: 170° → 100°)
 }
@@ -39,9 +39,14 @@ enum RepDirection: String, Hashable, Codable {
 // MARK: - Form Cue
 
 /// An optional "good form" check shown to the user during the exercise.
-struct FormCue: Hashable {
-    let description: String
-    let jointToWatch: String?
+public struct FormCue: Hashable {
+    public let description: String
+    public let jointToWatch: String?
+
+    public init(description: String, jointToWatch: String?) {
+        self.description = description
+        self.jointToWatch = jointToWatch
+    }
 }
 
 // MARK: - Joint Tracking Config
@@ -54,17 +59,41 @@ struct FormCue: Hashable {
 ///
 /// Joint names use `{side}_` prefix (e.g. "right_arm_joint") which gets resolved
 /// at runtime based on which side the user is exercising.
-struct JointTrackingConfig: Hashable {
-    let proximalJoint: String
-    let middleJoint: String
-    let distalJoint: String
-    let mode: TrackingMode
-    let targetRange: ClosedRange<Double>
-    let formCues: [FormCue]
-    let cameraPosition: CameraPosition
-    let reliability: TrackingReliability
-    let repDirection: RepDirection
-    let restAngle: Double  // Approximate angle when at rest (used for phase detection)
+public struct JointTrackingConfig: Hashable {
+    public let proximalJoint: String
+    public let middleJoint: String
+    public let distalJoint: String
+    public let mode: TrackingMode
+    public let targetRange: ClosedRange<Double>
+    public let formCues: [FormCue]
+    public let cameraPosition: CameraPosition
+    public let reliability: TrackingReliability
+    public let repDirection: RepDirection
+    public let restAngle: Double  // Approximate angle when at rest (used for phase detection)
+
+    public init(
+        proximalJoint: String,
+        middleJoint: String,
+        distalJoint: String,
+        mode: TrackingMode,
+        targetRange: ClosedRange<Double>,
+        formCues: [FormCue],
+        cameraPosition: CameraPosition,
+        reliability: TrackingReliability,
+        repDirection: RepDirection,
+        restAngle: Double
+    ) {
+        self.proximalJoint = proximalJoint
+        self.middleJoint = middleJoint
+        self.distalJoint = distalJoint
+        self.mode = mode
+        self.targetRange = targetRange
+        self.formCues = formCues
+        self.cameraPosition = cameraPosition
+        self.reliability = reliability
+        self.repDirection = repDirection
+        self.restAngle = restAngle
+    }
 }
 
 // MARK: - Exercise → Tracking Config (Device-Validated Only)

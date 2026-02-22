@@ -60,6 +60,27 @@ struct Exercise: Identifiable, Hashable, Codable {
     /// Alias for `description` — used by SessionIntroView
     var visualDescription: String { description }
     
+    /// Guide image filename for the exercise (matches files in Resources/).
+    var guideImageName: String? {
+        switch name {
+        case "Seated Knee Extension":       return "seatedkneeextension_full"
+        case "Straight Leg Raises":         return "straightlegraise_full"
+        case "Heel Slides":                 return "heelslide_full"
+        case "Terminal Knee Extension":     return "seatedkneeextension_full"  // similar motion
+        case "Seated Knee Flexion":         return "kneeflexion_full"
+        case "Single Leg Balance":          return nil  // no image yet
+        case "Elbow Flexion & Extension":   return "elbowextension_full"
+        case "Active Elbow Flexion":        return "elbowextension_full"  // similar motion
+        case "Elbow Extension Stretch":     return "elbowextension_full"
+        case "Wall Slides":                 return "wallslide_full"
+        case "Supine Shoulder Flexion":     return "supineshoulderflexion_full"
+        case "Standing Shoulder Flexion":   return "shoulderflexion_full"
+        case "Standing Hip Flexion":        return "standinghipflexion_full"
+        case "Hip Hinge":                   return "hiphinge_full"
+        default:                            return nil
+        }
+    }
+    
     init(id: UUID = UUID(),
          name: String,
          bodyArea: BodyArea,

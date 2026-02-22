@@ -55,11 +55,13 @@ struct BundledImage: View {
             Image(uiImage: img)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .frame(maxHeight: maxHeight)
         } else {
             // Fallback placeholder so something is visible during debugging
             Image(systemName: "figure.stand")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .frame(maxHeight: maxHeight)
                 .foregroundColor(PPColor.actionBlue.opacity(0.15))
                 .onAppear {
                     print("⚠️ BundledImage: Could not load '\(name)'. Showing placeholder.")

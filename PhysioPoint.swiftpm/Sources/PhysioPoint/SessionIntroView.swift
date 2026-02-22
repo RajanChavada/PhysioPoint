@@ -59,6 +59,14 @@ struct SessionIntroView: View {
                         .foregroundColor(.secondary)
                         .padding(.horizontal)
                     
+                    // Exercise guide image
+                    if let guideImage = exercise.guideImageName {
+                        BundledImage(guideImage, maxHeight: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
+                            .padding(.horizontal)
+                    }
+                    
                     // Quick stats
                     HStack(spacing: 24) {
                         statBadge(icon: "target", label: "\(Int(exercise.targetAngleRange.lowerBound))°–\(Int(exercise.targetAngleRange.upperBound))°", subtitle: "Target")
