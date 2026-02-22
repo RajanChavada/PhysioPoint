@@ -4,14 +4,89 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: PhysioPointState
+    @EnvironmentObject var storage: StorageService
 
     var body: some View {
         if appState.hasCompletedOnboarding {
-            HomeView()
+            MainTabView()
                 .environmentObject(appState)
+                .environmentObject(storage)
         } else {
             OnboardingView()
                 .environmentObject(appState)
+                .environmentObject(storage)
+        }
+    }
+}
+
+// MARK: - Main Tab View
+
+struct MainTabView: View {
+    @EnvironmentObject var appState: PhysioPointState
+    @EnvironmentObject var storage: StorageService
+    @State private var selectedTab = 0
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            HomeView()
+                .environmentObject(appState)
+                .environmentObject(storage)
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Home")
+                }
+                .tag(0)
+
+            ScheduleTabView()
+                .environmentObject(appState)
+                .environmentObject(storage)
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("Schedule")
+                }
+                .tag(1)
+
+            LearnHomeView()
+                .environmentObject(appState)
+                .environmentObject(storage)
+                .tabItem {
+                    Image(systemName: "book.fill")
+                    Text("Learn")
+                }
+                .tag(2)
+
+            ProfileView()
+                .environmentObject(appState)
+                .environmentObject(storage)
+                .tabItem {
+                    Image(systemName: "person.fill")
+                    Text("Profile")
+                }
+                .tag(3)
+        }
+        .tint(PPColor.actionBlue)
+        .onChange(of: appState.selectedTab) { _, newTab in
+            switch newTab {
+            case .home:     selectedTab = 0
+            case .schedule: selectedTab = 1
+            case .learn:    selectedTab = 2
+            case .profile:  selectedTab = 3
+            }
+        }
+    }
+}
+
+// MARK: - Schedule Tab Wrapper
+
+struct ScheduleTabView: View {
+    @EnvironmentObject var appState: PhysioPointState
+    @EnvironmentObject var storage: StorageService
+
+    var body: some View {
+        NavigationStack {
+            ScheduleView()
+                .environmentObject(appState)
+                .environmentObject(storage)
         }
     }
 }

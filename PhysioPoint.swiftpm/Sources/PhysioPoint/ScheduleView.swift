@@ -37,8 +37,7 @@ struct ScheduleView: View {
                 if hasSavedPlan { allDoneBanner } else { saveButton }
             }
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
         .onAppear { buildSlots() }
     }
 
@@ -234,7 +233,11 @@ struct ScheduleView: View {
                 appState.selectedExercise = condition.recommendedExercises.first
             }
         }
-        appState.navigationPath.append("SessionIntro")
+        // Switch to Home tab and navigate there (avoid nav stack conflicts between tabs)
+        appState.selectedTab = .home
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            appState.navigationPath.append("SessionIntro")
+        }
     }
 
     private func resolveExerciseFromSlot(_ slot: PlanSlot) -> Exercise? {

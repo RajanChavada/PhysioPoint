@@ -1,0 +1,472 @@
+import Foundation
+
+// MARK: - Learn Body Area
+
+/// Body areas for the Learn / Knowledge Center tab.
+/// Separate from BodyArea (used for exercises) because Learn covers areas
+/// like "Back & Core" that don't have AR-tracked exercises yet.
+enum LearnBodyArea: String, CaseIterable, Identifiable {
+    case knee        = "Knee"
+    case shoulder    = "Shoulder"
+    case backAndCore = "Back & Core"
+    case ankleAndFoot = "Ankle & Foot"
+
+    var id: String { rawValue }
+    var displayName: String { rawValue }
+
+    var subtitle: String {
+        switch self {
+        case .knee:         return "ACL, Dislocation, Rehab tips."
+        case .shoulder:     return "Rotator Cuff, Impingement."
+        case .backAndCore:  return "Lower Pain, Posture, Strength."
+        case .ankleAndFoot: return "Sprains, Stability, Mobility."
+        }
+    }
+
+    /// Custom image name in Resources/
+    var imageName: String {
+        switch self {
+        case .knee:         return "knee-icon"
+        case .shoulder:     return "shoulder-icon"
+        case .backAndCore:  return "back-icon"
+        case .ankleAndFoot: return "ankle-icon"
+        }
+    }
+
+    /// Fallback SF Symbol when custom image isn't available yet
+    var systemImage: String {
+        switch self {
+        case .knee:         return "figure.run"
+        case .shoulder:     return "figure.arms.open"
+        case .backAndCore:  return "figure.core.training"
+        case .ankleAndFoot: return "figure.step.training"
+        }
+    }
+
+    var conditions: [LearnCondition] {
+        switch self {
+        case .knee:         return LearnCondition.kneeConditions
+        case .shoulder:     return LearnCondition.shoulderConditions
+        case .backAndCore:  return LearnCondition.backConditions
+        case .ankleAndFoot: return LearnCondition.ankleConditions
+        }
+    }
+}
+
+// MARK: - Recovery Phase
+
+struct RecoveryPhase: Identifiable {
+    let id = UUID()
+    let title: String
+    let duration: String
+    let description: String
+}
+
+// MARK: - Therapy Technique
+
+struct TherapyTechnique: Identifiable {
+    let id = UUID()
+    let name: String
+    let description: String
+    let icon: String
+}
+
+// MARK: - Learn Condition
+
+struct LearnCondition: Identifiable {
+    let id: UUID
+    let name: String
+    let shortDescription: String
+    let systemIcon: String
+    let overview: String
+    let recoveryPhases: [RecoveryPhase]
+    let techniques: [TherapyTechnique]
+    let recommendedExerciseNames: [String]
+    let redFlags: [String]
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        shortDescription: String,
+        systemIcon: String,
+        overview: String,
+        recoveryPhases: [RecoveryPhase],
+        techniques: [TherapyTechnique],
+        recommendedExerciseNames: [String],
+        redFlags: [String]
+    ) {
+        self.id = id
+        self.name = name
+        self.shortDescription = shortDescription
+        self.systemIcon = systemIcon
+        self.overview = overview
+        self.recoveryPhases = recoveryPhases
+        self.techniques = techniques
+        self.recommendedExerciseNames = recommendedExerciseNames
+        self.redFlags = redFlags
+    }
+}
+
+// MARK: - Recovery Essentials
+
+struct RecoveryEssential: Identifiable {
+    let id = UUID()
+    let title: String
+    let icon: String
+    let summary: String
+    let tips: [String]
+}
+
+extension RecoveryEssential {
+    static let all: [RecoveryEssential] = [
+        RecoveryEssential(
+            title: "Sleep & Recovery",
+            icon: "bed.double.fill",
+            summary: "Quality sleep accelerates tissue repair and reduces inflammation.",
+            tips: [
+                "Aim for 7–9 hours of uninterrupted sleep.",
+                "Elevate the injured limb with a pillow while sleeping.",
+                "Avoid screens 30 minutes before bed to improve sleep quality.",
+                "Keep a consistent sleep schedule, even on weekends."
+            ]
+        ),
+        RecoveryEssential(
+            title: "Hydration & Nutrition",
+            icon: "drop.fill",
+            summary: "Proper hydration and nutrition fuel tissue repair and reduce swelling.",
+            tips: [
+                "Drink at least 8 glasses of water per day.",
+                "Increase protein intake to support muscle repair (lean meats, legumes, eggs).",
+                "Eat anti-inflammatory foods: berries, fatty fish, leafy greens.",
+                "Limit alcohol and caffeine, which can delay healing."
+            ]
+        ),
+        RecoveryEssential(
+            title: "Pain Management",
+            icon: "waveform.path.ecg",
+            summary: "Understanding pain helps you manage it without over-relying on medication.",
+            tips: [
+                "Use ice for the first 48–72 hours to reduce swelling (20 min on, 20 min off).",
+                "Switch to heat therapy after the acute phase to promote blood flow.",
+                "Over-the-counter NSAIDs can help, but consult your doctor first.",
+                "Gentle movement often reduces pain more than complete rest."
+            ]
+        ),
+        RecoveryEssential(
+            title: "Stretching Basics",
+            icon: "figure.flexibility",
+            summary: "Gentle stretching restores range of motion and prevents stiffness.",
+            tips: [
+                "Never stretch into sharp pain — mild discomfort is OK.",
+                "Hold each stretch for 20–30 seconds, don't bounce.",
+                "Stretch after warming up (e.g., after a short walk).",
+                "Focus on the muscles around the injured area, not just the injury itself."
+            ]
+        )
+    ]
+}
+
+// MARK: - Seed Data
+
+extension LearnCondition {
+
+    // ── KNEE ──────────────────────────────────────────────────────
+
+    static let kneeConditions: [LearnCondition] = [
+        LearnCondition(
+            name: "ACL Tear",
+            shortDescription: "Anterior cruciate ligament injury — common in sports with sudden stops and direction changes.",
+            systemIcon: "bolt.trianglebadge.exclamationmark.fill",
+            overview: """
+            The anterior cruciate ligament (ACL) is one of the key ligaments that stabilize your knee joint. \
+            ACL tears are among the most common knee injuries, especially in athletes who play sports involving \
+            pivoting, jumping, or sudden stops.\n\n\
+            Treatment depends on severity. Partial tears may heal with physical therapy alone, while complete \
+            tears often require surgical reconstruction followed by 6–12 months of rehabilitation. Early rehab \
+            focuses on reducing swelling and restoring range of motion, then progresses to strengthening and \
+            eventually sport-specific training.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Acute", duration: "0–2 weeks", description: "Rest, ice, compression, elevation. Reduce swelling and protect the knee."),
+                RecoveryPhase(title: "Early Rehab", duration: "2–6 weeks", description: "Gentle ROM exercises, quad sets, straight leg raises."),
+                RecoveryPhase(title: "Strengthening", duration: "6–16 weeks", description: "Progressive resistance, hip and glute strengthening, balance work."),
+                RecoveryPhase(title: "Return to Activity", duration: "4–12 months", description: "Sport-specific drills, agility training, confidence building.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "RICE Method", description: "Rest, Ice, Compression, Elevation — the gold standard for acute injury management.", icon: "snowflake"),
+                TherapyTechnique(name: "Quad Sets", description: "Tighten the thigh muscle with the knee straight to maintain quad strength.", icon: "bolt.fill"),
+                TherapyTechnique(name: "Balance Training", description: "Single-leg balance exercises to restore proprioception and stability.", icon: "figure.stand")
+            ],
+            recommendedExerciseNames: ["Straight Leg Raises", "Seated Knee Extension", "Single Leg Balance"],
+            redFlags: [
+                "Knee gives way or buckles during walking",
+                "Significant swelling that doesn't improve after 48 hours",
+                "Unable to bear weight on the affected leg",
+                "Numbness or tingling below the knee"
+            ]
+        ),
+
+        LearnCondition(
+            name: "Knee Dislocation",
+            shortDescription: "Displacement of the kneecap or knee joint — requires careful rehab.",
+            systemIcon: "exclamationmark.triangle.fill",
+            overview: """
+            A knee dislocation occurs when the bones of the knee joint are forced out of alignment. This is a \
+            serious injury that can damage ligaments, blood vessels, and nerves. Patellar (kneecap) dislocations \
+            are more common and less severe than full knee dislocations.\n\n\
+            Recovery focuses on immobilization in the acute phase, followed by progressive range of motion \
+            exercises and strengthening. Most people can return to normal activities within 3–6 months with \
+            consistent rehabilitation.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Immobilization", duration: "0–3 weeks", description: "Brace or splint to protect the knee. Ice and elevation."),
+                RecoveryPhase(title: "Early Motion", duration: "3–6 weeks", description: "Gentle bending and straightening within pain-free range."),
+                RecoveryPhase(title: "Strengthening", duration: "6–12 weeks", description: "Progressive quad, hamstring, and hip strengthening."),
+                RecoveryPhase(title: "Full Recovery", duration: "3–6 months", description: "Return to sport and daily activities with full confidence.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Patellar Mobilization", description: "Gentle kneecap glides to prevent stiffness and adhesions.", icon: "hand.draw"),
+                TherapyTechnique(name: "Cold Therapy", description: "Apply ice packs to reduce swelling and pain after exercises.", icon: "snowflake"),
+                TherapyTechnique(name: "Compression Taping", description: "McConnell taping technique to stabilize the kneecap during rehab.", icon: "bandage")
+            ],
+            recommendedExerciseNames: ["Heel Slides", "Seated Knee Flexion", "Terminal Knee Extension"],
+            redFlags: [
+                "Sudden increase in swelling after a session",
+                "Loss of feeling in the foot or toes",
+                "Knee locks in a bent position and won't straighten",
+                "Sharp pain behind the knee"
+            ]
+        ),
+
+        LearnCondition(
+            name: "General Knee Pain",
+            shortDescription: "Stiffness, soreness, or general discomfort in the knee area.",
+            systemIcon: "bandage",
+            overview: """
+            General knee pain is extremely common and can result from overuse, minor injuries, arthritis, or \
+            muscle imbalances. Most cases respond well to gentle exercise, stretching, and activity modification.\n\n\
+            The key is to keep the knee moving within a pain-free range. Complete rest often makes stiffness \
+            worse. Focus on strengthening the muscles around the knee — especially the quadriceps and hip \
+            stabilizers — to take pressure off the joint.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Pain Management", duration: "1–2 weeks", description: "Reduce aggravating activities. Ice after exercise."),
+                RecoveryPhase(title: "Gentle Movement", duration: "2–4 weeks", description: "Start ROM exercises and light walking."),
+                RecoveryPhase(title: "Strengthening", duration: "4–8 weeks", description: "Progressive quad and hip exercises."),
+                RecoveryPhase(title: "Maintenance", duration: "Ongoing", description: "Regular exercise to prevent recurrence.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Heat Therapy", description: "Apply warmth before exercise to loosen stiff joints and improve blood flow.", icon: "flame"),
+                TherapyTechnique(name: "Low-Impact Movement", description: "Swimming, cycling, or walking to keep the joint mobile without high impact.", icon: "figure.walk"),
+                TherapyTechnique(name: "Foam Rolling", description: "Self-myofascial release on quads and IT band to reduce tightness.", icon: "cylinder")
+            ],
+            recommendedExerciseNames: ["Seated Knee Extension", "Straight Leg Raises", "Heel Slides"],
+            redFlags: [
+                "Pain that wakes you up at night",
+                "Sudden onset of redness and warmth around the knee",
+                "Inability to fully straighten or bend the knee",
+                "Pain persisting beyond 6 weeks despite exercise"
+            ]
+        )
+    ]
+
+    // ── SHOULDER ─────────────────────────────────────────────────
+
+    static let shoulderConditions: [LearnCondition] = [
+        LearnCondition(
+            name: "Rotator Cuff Injury",
+            shortDescription: "Strain or tear of the muscles that stabilize the shoulder.",
+            systemIcon: "figure.arms.open",
+            overview: """
+            The rotator cuff is a group of four muscles and tendons that surround the shoulder joint, keeping \
+            the head of the upper arm bone firmly within the shallow socket. Injuries range from mild \
+            inflammation (tendinitis) to partial or complete tears.\n\n\
+            Most rotator cuff problems respond to physical therapy. Rehab focuses on restoring pain-free \
+            range of motion first, then gradually strengthening the rotator cuff and scapular muscles.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Pain Relief", duration: "0–2 weeks", description: "Avoid overhead activities. Ice and gentle pendulum exercises."),
+                RecoveryPhase(title: "ROM Recovery", duration: "2–6 weeks", description: "Assisted shoulder flexion and wall slides."),
+                RecoveryPhase(title: "Strengthening", duration: "6–12 weeks", description: "Resistance band exercises for rotator cuff muscles."),
+                RecoveryPhase(title: "Full Function", duration: "3–6 months", description: "Return to full overhead activities and sport.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Pendulum Exercises", description: "Lean forward and let the arm swing gently in circles to maintain mobility.", icon: "arrow.clockwise"),
+                TherapyTechnique(name: "Wall Slides", description: "Slide hands up a wall to improve overhead range of motion safely.", icon: "arrow.up"),
+                TherapyTechnique(name: "Resistance Bands", description: "External and internal rotation with bands to strengthen rotator cuff.", icon: "figure.strengthtraining.traditional")
+            ],
+            recommendedExerciseNames: ["Wall Slides", "Supine Shoulder Flexion", "Standing Shoulder Flexion"],
+            redFlags: [
+                "Complete inability to lift the arm",
+                "Shoulder pain after a fall or direct impact",
+                "Persistent night pain that doesn't improve in 2 weeks",
+                "Visible deformity of the shoulder"
+            ]
+        ),
+
+        LearnCondition(
+            name: "Shoulder Impingement",
+            shortDescription: "Pinching of tendons when lifting the arm overhead.",
+            systemIcon: "exclamationmark.triangle",
+            overview: """
+            Shoulder impingement occurs when the rotator cuff tendons get pinched between the bones of the \
+            shoulder during overhead movements. It's common in people who do repetitive overhead activities \
+            like swimming, painting, or throwing.\n\n\
+            Treatment focuses on correcting posture, strengthening the muscles that pull the shoulder blade \
+            down and back, and gradually restoring pain-free overhead reach.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Modification", duration: "0–2 weeks", description: "Avoid overhead movements. Posture correction."),
+                RecoveryPhase(title: "Mobility", duration: "2–4 weeks", description: "Gentle stretching and scapular exercises."),
+                RecoveryPhase(title: "Strengthening", duration: "4–8 weeks", description: "Rotator cuff and scapular stabilizer strengthening."),
+                RecoveryPhase(title: "Return", duration: "2–3 months", description: "Gradual return to overhead activities.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Posture Correction", description: "Shoulder blade squeezes and chin tucks to improve upper body posture.", icon: "figure.stand"),
+                TherapyTechnique(name: "Scapular Setting", description: "Draw shoulder blades down and back to create space in the joint.", icon: "arrow.down.right"),
+                TherapyTechnique(name: "Ice After Activity", description: "Apply ice for 15 minutes after exercise to reduce inflammation.", icon: "snowflake")
+            ],
+            recommendedExerciseNames: ["Wall Slides", "Standing Shoulder Flexion", "Supine Shoulder Flexion"],
+            redFlags: [
+                "Sharp catching pain when lowering the arm from overhead",
+                "Weakness that makes daily tasks difficult",
+                "Pain radiating down the arm past the elbow",
+                "Symptoms worsening despite 4 weeks of rehab"
+            ]
+        )
+    ]
+
+    // ── BACK & CORE ──────────────────────────────────────────────
+
+    static let backConditions: [LearnCondition] = [
+        LearnCondition(
+            name: "Lower Back Pain",
+            shortDescription: "The most common musculoskeletal complaint — often from weak core muscles.",
+            systemIcon: "figure.core.training",
+            overview: """
+            Lower back pain affects up to 80% of people at some point in their lives. Most cases are \
+            \"non-specific\" — meaning there's no serious underlying cause. Poor posture, weak core muscles, \
+            prolonged sitting, and lack of movement are the biggest contributors.\n\n\
+            The best evidence-based treatment is staying active. Gentle movement, core strengthening, and \
+            hip flexibility work are far more effective than bed rest. Many people see significant improvement \
+            within 4–6 weeks of consistent exercise.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Acute Phase", duration: "0–1 week", description: "Gentle walking and basic mobility. Avoid prolonged sitting."),
+                RecoveryPhase(title: "Movement", duration: "1–3 weeks", description: "Increase walking duration. Begin hip and glute exercises."),
+                RecoveryPhase(title: "Core Work", duration: "3–8 weeks", description: "Progressive core strengthening: bird dogs, bridges, planks."),
+                RecoveryPhase(title: "Prevention", duration: "Ongoing", description: "Regular exercise and posture awareness to prevent recurrence.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Cat-Cow Stretch", description: "Gentle spinal flexion and extension on hands and knees.", icon: "arrow.up.arrow.down"),
+                TherapyTechnique(name: "Hip Hinge Training", description: "Learn to bend at the hips instead of rounding the lower back.", icon: "figure.walk"),
+                TherapyTechnique(name: "Walking", description: "The simplest and most effective movement for back pain recovery.", icon: "figure.walk")
+            ],
+            recommendedExerciseNames: ["Hip Hinge", "Standing Hip Flexion"],
+            redFlags: [
+                "Numbness or tingling in both legs",
+                "Loss of bladder or bowel control",
+                "Pain after a significant fall or accident",
+                "Unexplained weight loss with back pain"
+            ]
+        ),
+
+        LearnCondition(
+            name: "Poor Posture",
+            shortDescription: "Rounded shoulders and forward head — leads to neck, back, and shoulder pain.",
+            systemIcon: "figure.stand",
+            overview: """
+            Poor posture — especially the \"tech neck\" position from prolonged phone and computer use — is \
+            increasingly common. It places excess strain on the spine, shoulders, and neck muscles.\n\n\
+            Improvement comes from strengthening the muscles that pull the shoulders back and down, stretching \
+            tight chest muscles, and building awareness of spinal alignment throughout the day.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Awareness", duration: "Week 1", description: "Set reminders to check posture every 30 minutes."),
+                RecoveryPhase(title: "Stretching", duration: "Weeks 1–3", description: "Chest doorway stretches and chin tucks."),
+                RecoveryPhase(title: "Strengthening", duration: "Weeks 3–8", description: "Wall slides, rows, and core exercises."),
+                RecoveryPhase(title: "Habit", duration: "Ongoing", description: "Posture becomes automatic with consistent practice.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Chin Tucks", description: "Pull the chin straight back to align the head over the shoulders.", icon: "arrow.backward"),
+                TherapyTechnique(name: "Doorway Stretch", description: "Stretch the chest muscles by placing arms on a door frame and leaning forward.", icon: "door.left.hand.open"),
+                TherapyTechnique(name: "Desk Ergonomics", description: "Screen at eye level, feet flat, elbows at 90° while typing.", icon: "desktopcomputer")
+            ],
+            recommendedExerciseNames: ["Wall Slides", "Standing Shoulder Flexion"],
+            redFlags: [
+                "Sharp neck pain radiating into the arm",
+                "Headaches that worsen throughout the day",
+                "Tingling or weakness in the hands",
+                "Difficulty turning the head to one side"
+            ]
+        )
+    ]
+
+    // ── ANKLE & FOOT ─────────────────────────────────────────────
+
+    static let ankleConditions: [LearnCondition] = [
+        LearnCondition(
+            name: "Ankle Sprain",
+            shortDescription: "Stretched or torn ligaments from rolling the ankle.",
+            systemIcon: "figure.step.training",
+            overview: """
+            Ankle sprains are one of the most common injuries, often occurring during sports, walking on \
+            uneven surfaces, or simply stepping wrong. The most common type is a lateral (outside) sprain \
+            where the foot rolls inward.\n\n\
+            While mild sprains heal in 2–4 weeks, proper rehabilitation is crucial to prevent re-injury. \
+            Up to 40% of ankle sprains recur without adequate balance and strength training. Focus on \
+            restoring range of motion, then building ankle stability and proprioception.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "RICE Phase", duration: "0–3 days", description: "Rest, ice, compression, elevation. Protected weight-bearing."),
+                RecoveryPhase(title: "Early Motion", duration: "3–14 days", description: "Gentle ankle circles, alphabet tracing with toes."),
+                RecoveryPhase(title: "Strengthening", duration: "2–6 weeks", description: "Resistance band exercises, calf raises, balance work."),
+                RecoveryPhase(title: "Return", duration: "6–12 weeks", description: "Sport-specific agility and confidence building.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "RICE Method", description: "Rest, Ice, Compression, Elevation — essential in the first 72 hours.", icon: "snowflake"),
+                TherapyTechnique(name: "Ankle Alphabet", description: "Trace the alphabet with your big toe to improve range of motion.", icon: "textformat.abc"),
+                TherapyTechnique(name: "Balance Board", description: "Single-leg balance on unstable surfaces to rebuild proprioception.", icon: "figure.stand")
+            ],
+            recommendedExerciseNames: ["Single Leg Balance", "Standing Hip Flexion"],
+            redFlags: [
+                "Unable to bear weight after 48 hours",
+                "Severe bruising spreading to the toes",
+                "Bony tenderness at the ankle bones (possible fracture)",
+                "Ankle feels unstable or gives way repeatedly"
+            ]
+        ),
+
+        LearnCondition(
+            name: "Ankle Stiffness",
+            shortDescription: "Limited range of motion after injury or prolonged immobilization.",
+            systemIcon: "bandage",
+            overview: """
+            Ankle stiffness commonly occurs after a sprain, fracture, or period of immobilization (e.g., \
+            wearing a boot or cast). The ankle joint loses its normal range of motion, which affects \
+            walking, squatting, and balance.\n\n\
+            Recovery focuses on gentle stretching to restore dorsiflexion (pulling the foot upward), \
+            followed by strengthening exercises. Most people regain full mobility within 4–8 weeks of \
+            consistent daily stretching and exercise.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Gentle Stretch", duration: "0–2 weeks", description: "Towel stretches and calf stretches against a wall."),
+                RecoveryPhase(title: "Active ROM", duration: "2–4 weeks", description: "Ankle circles, heel raises, and rocking exercises."),
+                RecoveryPhase(title: "Loading", duration: "4–6 weeks", description: "Squats with focus on ankle dorsiflexion. Balance work."),
+                RecoveryPhase(title: "Full Return", duration: "6–8 weeks", description: "Normal walking and activities without restriction.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Wall Calf Stretch", description: "Lean into a wall with the stiff ankle behind to stretch the calf and Achilles.", icon: "arrow.forward"),
+                TherapyTechnique(name: "Towel Stretch", description: "Sit with leg straight, loop a towel around the ball of the foot and pull gently.", icon: "figure.flexibility"),
+                TherapyTechnique(name: "Heel Raises", description: "Rise up on toes and slowly lower to build calf strength and ankle control.", icon: "arrow.up")
+            ],
+            recommendedExerciseNames: ["Single Leg Balance", "Seated Knee Extension"],
+            redFlags: [
+                "Sudden increase in swelling after stretching",
+                "Sharp pain in the Achilles tendon",
+                "Crunching or grinding sensation in the joint",
+                "No improvement after 4 weeks of daily stretching"
+            ]
+        )
+    ]
+}
