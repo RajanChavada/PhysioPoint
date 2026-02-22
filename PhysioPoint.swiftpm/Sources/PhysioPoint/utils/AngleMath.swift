@@ -2,14 +2,13 @@ import Foundation
 import simd
 
 public enum AngleMath {
-    /// Computes the angle in degrees between three points (hip, knee, ankle).
-    /// The angle is computed at the middle point (knee).
-    /// Returns 180 when the leg is perfectly straight.
-    public static func computeKneeFlexionAngle(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> Double {
-        // Vector A = knee to hip
-        let vectorA = hip - knee
-        // Vector B = knee to ankle
-        let vectorB = ankle - knee
+    /// Computes the angle in degrees at the middle joint between three body points.
+    /// Works for ANY joint triple: (hip, knee, ankle), (shoulder, elbow, wrist), etc.
+    /// Returns 180 when the limb is perfectly straight, ~90 when bent at right angle.
+    /// Labels are for educational demo only — not medical prescriptions.
+    public static func computeJointAngle(proximal: SIMD3<Float>, joint: SIMD3<Float>, distal: SIMD3<Float>) -> Double {
+        let vectorA = proximal - joint
+        let vectorB = distal - joint
         
         let lengthA = length(vectorA)
         let lengthB = length(vectorB)
@@ -28,5 +27,10 @@ public enum AngleMath {
         let degrees = Double(radians) * 180.0 / .pi
         
         return degrees
+    }
+
+    /// Backward-compatible alias for knee-specific callers.
+    public static func computeKneeFlexionAngle(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> Double {
+        computeJointAngle(proximal: hip, joint: knee, distal: ankle)
     }
 }
