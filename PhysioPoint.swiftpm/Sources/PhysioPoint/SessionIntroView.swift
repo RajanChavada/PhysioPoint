@@ -24,11 +24,11 @@ struct SessionIntroView: View {
                     .padding(.top)
                     
                     // Tracking mode badge — all exercises are now AR-tracked
-                    if let config = exercise.trackingConfig {
+                    if exercise.trackingConfig != nil {
                         HStack(spacing: 6) {
-                            Image(systemName: "dot.radiowaves.left.and.right")
+                            Image(systemName: "camera.fill")
                                 .font(.caption2)
-                            Text("AR Tracked • \(trackingModeLabel(config.mode))")
+                            Text("Camera tracks your movement automatically")
                                 .font(.caption)
                                 .fontWeight(.medium)
                         }
@@ -37,6 +37,7 @@ struct SessionIntroView: View {
                         .padding(.vertical, 6)
                         .background(Color.green.opacity(0.12))
                         .cornerRadius(8)
+                        .accessibilityLabel("Your movement will be tracked by the camera")
                     } else {
                         HStack(spacing: 6) {
                             Image(systemName: "timer")
@@ -69,9 +70,9 @@ struct SessionIntroView: View {
                     
                     // Quick stats
                     HStack(spacing: 24) {
-                        statBadge(icon: "target", label: "\(Int(exercise.targetAngleRange.lowerBound))°–\(Int(exercise.targetAngleRange.upperBound))°", subtitle: "Target")
+                        statBadge(icon: "checkmark.circle", label: plainAngleLabel(exercise), subtitle: "Goal")
                         statBadge(icon: "timer", label: "\(exercise.holdSeconds)s", subtitle: "Hold")
-                        statBadge(icon: "repeat", label: "\(exercise.reps)", subtitle: "Reps")
+                        statBadge(icon: "repeat", label: "\(exercise.reps) times", subtitle: "Repeat")
                     }
                     .padding()
                     .background(Color(.secondarySystemBackground))
@@ -154,6 +155,19 @@ struct SessionIntroView: View {
                     }
                     .padding(.horizontal)
                     .padding(.top, 8)
+
+                    // Need help button
+                    Button {
+                        // Trigger the chat overlay
+                        NotificationCenter.default.post(name: NSNotification.Name("OpenPhysioChat"), object: nil)
+                    } label: {
+                        Label("Need help with this exercise?", systemImage: "questionmark.circle")
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                            .frame(minHeight: 44)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 4)
                     
                     Text("For educational demo only. Not medical advice.")
                         .font(.caption2)
@@ -168,6 +182,7 @@ struct SessionIntroView: View {
         }
         .navigationTitle("Exercise Guide")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
     
     // MARK: - Components
@@ -222,10 +237,24 @@ struct SessionIntroView: View {
     
     private func trackingModeLabel(_ mode: TrackingMode) -> String {
         switch mode {
-        case .angleBased:          return "Angle-Based"
-        case .holdDuration:        return "Hold Duration"
-        case .rangeOfMotion:       return "Range of Motion"
-        case .repetitionCounting:  return "Rep Counting"
+        case .angleBased:          return "Movement tracking"
+        case .holdDuration:        return "Hold timing"
+        case .rangeOfMotion:       return "Movement range"
+        case .repetitionCounting:  return "Counting reps"
+        }
+    }
+
+    /// Convert clinical angle ranges to plain language
+    private func plainAngleLabel(_ exercise: Exercise) -> String {
+        let upper = exercise.targetAngleRange.upperBound
+        if upper >= 170 {
+            return "Straighten fully"
+        } else if upper >= 140 {
+            return "Raise up high"
+        } else if upper >= 100 {
+            return "Bend halfway"
+        } else {
+            return "Gentle bend"
         }
     }
 }

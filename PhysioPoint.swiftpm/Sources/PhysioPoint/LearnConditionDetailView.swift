@@ -69,6 +69,7 @@ struct LearnConditionDetailView: View {
         .background(PPGradient.pageBackground.ignoresSafeArea())
         .navigationTitle(condition.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     // MARK: - Section Card

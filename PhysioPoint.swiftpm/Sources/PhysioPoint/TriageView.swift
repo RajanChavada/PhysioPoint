@@ -118,8 +118,9 @@ struct TriageView: View {
                 }
             }
         }
-        .navigationTitle("")
+        .navigationTitle(showConditions ? (selectedArea?.rawValue ?? "") : "")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(showConditions)
     }
 
     // MARK: - Body Map Section
@@ -156,6 +157,7 @@ struct TriageView: View {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
                                 selectedArea = zone.id
                             }
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         }
                     }
                 }
@@ -234,7 +236,10 @@ struct TriageView: View {
 
     private var conditionListSection: some View {
         VStack(spacing: 0) {
-            HStack {
+            conditionsList
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
                 Button {
                     withAnimation(.spring(response: 0.35)) {
                         showConditions = false
@@ -247,17 +252,7 @@ struct TriageView: View {
                     .font(.subheadline)
                     .foregroundColor(PPColor.actionBlue)
                 }
-                Spacer()
-                Text(selectedArea?.rawValue ?? "")
-                    .font(.headline)
-                Spacer()
-                Color.clear.frame(width: 80, height: 1)
             }
-            .padding(.horizontal)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
-
-            conditionsList
         }
     }
 
@@ -310,6 +305,9 @@ struct TriageView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(condition.name). \(condition.description)")
+                            .accessibilityHint("Double-tap to select this condition")
                         }
                     }
                     .padding(.horizontal)

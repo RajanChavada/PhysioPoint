@@ -62,6 +62,9 @@ struct LearnHomeView: View {
                                     BodyAreaCard(area: area)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("\(area.displayName) recovery guide. \(area.subtitle)")
+                                .accessibilityHint("Double-tap to open exercises for \(area.displayName)")
                             }
                         }
 
@@ -84,6 +87,9 @@ struct LearnHomeView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
                 }
+
+                // AI Chat floating button
+                ChatFABOverlay()
             }
             .navigationBarHidden(true)
         }
@@ -143,6 +149,7 @@ private struct EssentialCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(width: 140, alignment: .leading)
+        .frame(minHeight: 50)
         .padding(14)
         .background(Color(.systemBackground))
         .cornerRadius(16)

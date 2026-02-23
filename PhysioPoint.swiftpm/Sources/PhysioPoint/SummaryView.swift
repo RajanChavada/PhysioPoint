@@ -64,6 +64,7 @@ struct SummaryView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle("")
         .onAppear {
             // Mark the active schedule slot as complete
@@ -177,11 +178,11 @@ struct SummaryView: View {
             Text("Rep Consistency")
                 .font(.headline)
 
-            HStack(spacing: 10) {
+            let columns = [GridItem(.adaptive(minimum: 90), spacing: 8)]
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                 ForEach(metrics.repResults) { rep in
                     repChip(rep)
                 }
-                Spacer()
             }
         }
         .padding(16)

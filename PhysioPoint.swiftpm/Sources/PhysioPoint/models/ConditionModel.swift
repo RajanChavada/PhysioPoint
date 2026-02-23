@@ -112,7 +112,7 @@ struct Condition: Identifiable, Hashable, Codable {
     private static let kneeConditions: [Condition] = [
         Condition(
             name: "General Knee Pain",
-            description: "Knee stiffness or general discomfort — gentle strengthening.",
+            description: "Knee feels stiff or sore — gentle exercises to ease the pain.",
             bodyArea: .knee,
             category: .generalPain,
             recommendedExercises: [.seatedKneeExtension,
@@ -121,7 +121,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Knee Dislocation Therapy",
-            description: "Post-dislocation controlled range-of-motion work.",
+            description: "Gentle exercises after a kneecap slip or dislocation.",
             bodyArea: .knee,
             category: .dislocationTherapy,
             recommendedExercises: [.heelSlides,
@@ -130,7 +130,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Knee Pain When Bending",
-            description: "Pain during knee flexion — progressive bending exercises.",
+            description: "Hurts when you bend or climb stairs — we'll start slow.",
             bodyArea: .knee,
             category: .painBending,
             recommendedExercises: [.seatedKneeFlexion,
@@ -146,7 +146,7 @@ struct Condition: Identifiable, Hashable, Codable {
     private static let elbowConditions: [Condition] = [
         Condition(
             name: "General Elbow Pain",
-            description: "Elbow stiffness or general discomfort.",
+            description: "Elbow feels stiff or tender — gentle bending exercises.",
             bodyArea: .elbow,
             category: .elbowGeneralPain,
             recommendedExercises: [.elbowFlexionExtension,
@@ -155,7 +155,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Elbow Dislocation Therapy",
-            description: "Post-dislocation gentle range-of-motion.",
+            description: "Gentle exercises after an elbow dislocation.",
             bodyArea: .elbow,
             category: .elbowDislocation,
             recommendedExercises: [.elbowExtensionStretch,
@@ -164,7 +164,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Elbow Pain When Bending",
-            description: "Pain during elbow flexion or extension.",
+            description: "Hurts when you bend or straighten your elbow.",
             bodyArea: .elbow,
             category: .elbowPainBending,
             recommendedExercises: [.activeElbowFlexion,
@@ -182,7 +182,7 @@ struct Condition: Identifiable, Hashable, Codable {
     private static let hipConditions: [Condition] = [
         Condition(
             name: "General Hip Pain",
-            description: "Hip stiffness or weakness — gentle mobilization.",
+            description: "Hip feels stiff or weak — gentle movements to loosen up.",
             bodyArea: .hip,
             category: .hipGeneralPain,
             recommendedExercises: [.standingHipFlexion,
@@ -191,7 +191,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Trouble Twisting",
-            description: "Difficulty with rotational hip movement.",
+            description: "Hard to twist or turn your body at the hips.",
             bodyArea: .hip,
             category: .troubleTwisting,
             recommendedExercises: [.standingHipFlexion,
@@ -200,7 +200,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Pain in Bending",
-            description: "Pain when bending forward at the hips.",
+            description: "Hurts when you bend forward — we'll work on that.",
             bodyArea: .hip,
             category: .painInBending,
             recommendedExercises: [.hipHinge,
@@ -217,7 +217,7 @@ struct Condition: Identifiable, Hashable, Codable {
     private static let ankleConditions: [Condition] = [
         Condition(
             name: "General Ankle Pain",
-            description: "Ankle stiffness — balance and stability work.",
+            description: "Ankle feels stiff — balance and stability exercises.",
             bodyArea: .ankle,
             category: .ankleGeneralPain,
             recommendedExercises: [.singleLegBalance,
@@ -226,7 +226,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Twisted/Rolled Ankle",
-            description: "Sprained ankle recovery — progressive weight bearing.",
+            description: "Sprained ankle — start putting weight on it slowly.",
             bodyArea: .ankle,
             category: .twistedRolled,
             recommendedExercises: [.singleLegBalance,
@@ -235,7 +235,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Broken Ankle / Pain Rotating",
-            description: "Post-fracture gentle strength and balance.",
+            description: "Recovering from a break — gentle strength and balance.",
             bodyArea: .ankle,
             category: .painRotating,
             recommendedExercises: [.singleLegBalance,
@@ -252,7 +252,7 @@ struct Condition: Identifiable, Hashable, Codable {
     private static let shoulderConditions: [Condition] = [
         Condition(
             name: "General Shoulder Pain",
-            description: "Shoulder stiffness or impingement — gentle overhead work.",
+            description: "Shoulder feels stiff or has a pinching pain.",
             bodyArea: .shoulder,
             category: .shoulderGeneralPain,
             recommendedExercises: [.wallSlidesShoulder,
@@ -261,7 +261,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Dislocated Shoulder",
-            description: "Post-dislocation controlled range-of-motion.",
+            description: "Gentle exercises after a shoulder dislocation.",
             bodyArea: .shoulder,
             category: .dislocatedShoulder,
             recommendedExercises: [.supineShoulderFlexion,
@@ -270,7 +270,7 @@ struct Condition: Identifiable, Hashable, Codable {
         ),
         Condition(
             name: "Pain Lifting Arm",
-            description: "Difficulty raising the arm overhead.",
+            description: "Hard to raise your arm up — we'll help you get there.",
             bodyArea: .shoulder,
             category: .painLifting,
             recommendedExercises: [.standingShoulderFlexion,

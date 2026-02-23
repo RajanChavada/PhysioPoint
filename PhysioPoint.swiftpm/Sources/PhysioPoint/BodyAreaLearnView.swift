@@ -42,6 +42,9 @@ struct BodyAreaLearnView: View {
                         ConditionRowCard(condition: condition)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(condition.name). \(condition.shortDescription)")
+                    .accessibilityHint("Double-tap to learn more")
                 }
 
                 // Quick info
@@ -123,5 +126,7 @@ private struct ConditionRowCard: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
         .padding(.horizontal)
+        .frame(minHeight: 60)
+        .contentShape(Rectangle())
     }
 }

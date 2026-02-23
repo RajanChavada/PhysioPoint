@@ -101,7 +101,7 @@ struct OnboardingView: View {
         (
             "figure.run.circle.fill",
             "Welcome to\nPhysioPoint",
-            "Your intelligent companion for a faster, smarter recovery journey."
+            "Simple, guided exercises to help you recover — step by step."
         ),
         (
             "arkit",
@@ -308,6 +308,9 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 20)
                 }
+
+                // AI Chat floating button
+                ChatFABOverlay()
             }
             .navigationBarHidden(true)
             .navigationDestination(for: String.self) { destination in

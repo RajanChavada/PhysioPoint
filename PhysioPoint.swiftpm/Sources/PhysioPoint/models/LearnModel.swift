@@ -16,10 +16,10 @@ enum LearnBodyArea: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .knee:         return "ACL, Dislocation, Rehab tips."
-        case .shoulder:     return "Rotator Cuff, Impingement."
+        case .knee:         return "ACL, Dislocation, Recovery tips."
+        case .shoulder:     return "Shoulder muscles, Pinching pain."
         case .backAndCore:  return "Lower Pain, Posture, Strength."
-        case .ankleAndFoot: return "Sprains, Stability, Mobility."
+        case .ankleAndFoot: return "Sprains, Stability, Getting moving."
         }
     }
 
@@ -187,10 +187,10 @@ extension LearnCondition {
             eventually sport-specific training.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Acute", duration: "0–2 weeks", description: "Rest, ice, compression, elevation. Reduce swelling and protect the knee."),
-                RecoveryPhase(title: "Early Rehab", duration: "2–6 weeks", description: "Gentle ROM exercises, quad sets, straight leg raises."),
-                RecoveryPhase(title: "Strengthening", duration: "6–16 weeks", description: "Progressive resistance, hip and glute strengthening, balance work."),
-                RecoveryPhase(title: "Return to Activity", duration: "4–12 months", description: "Sport-specific drills, agility training, confidence building.")
+                RecoveryPhase(title: "Rest & Reduce Swelling", duration: "0–2 weeks", description: "Rest, ice, compression, elevation. Protect the knee and let swelling go down."),
+                RecoveryPhase(title: "Start Moving Gently", duration: "2–6 weeks", description: "Gentle bending exercises, tighten your thigh muscles, leg raises."),
+                RecoveryPhase(title: "Build Strength", duration: "6–16 weeks", description: "Gradually increase effort. Strengthen your hips, thighs, and balance."),
+                RecoveryPhase(title: "Back to Normal", duration: "4–12 months", description: "Return to sports and daily life with confidence.")
             ],
             techniques: [
                 TherapyTechnique(name: "RICE Method", description: "Rest, Ice, Compression, Elevation — the gold standard for acute injury management.", icon: "snowflake"),
@@ -219,10 +219,10 @@ extension LearnCondition {
             consistent rehabilitation.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Immobilization", duration: "0–3 weeks", description: "Brace or splint to protect the knee. Ice and elevation."),
-                RecoveryPhase(title: "Early Motion", duration: "3–6 weeks", description: "Gentle bending and straightening within pain-free range."),
-                RecoveryPhase(title: "Strengthening", duration: "6–12 weeks", description: "Progressive quad, hamstring, and hip strengthening."),
-                RecoveryPhase(title: "Full Recovery", duration: "3–6 months", description: "Return to sport and daily activities with full confidence.")
+                RecoveryPhase(title: "Keep Still to Heal", duration: "0–3 weeks", description: "Wear a brace or splint to protect the knee. Ice and keep it raised."),
+                RecoveryPhase(title: "Start Moving Gently", duration: "3–6 weeks", description: "Gentle bending and straightening — only within a comfortable range."),
+                RecoveryPhase(title: "Build Strength", duration: "6–12 weeks", description: "Gradually strengthen your thigh, hamstring, and hip muscles."),
+                RecoveryPhase(title: "Back to Normal", duration: "3–6 months", description: "Return to sports and daily activities with full confidence.")
             ],
             techniques: [
                 TherapyTechnique(name: "Patellar Mobilization", description: "Gentle kneecap glides to prevent stiffness and adhesions.", icon: "hand.draw"),
@@ -250,10 +250,10 @@ extension LearnCondition {
             stabilizers — to take pressure off the joint.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Pain Management", duration: "1–2 weeks", description: "Reduce aggravating activities. Ice after exercise."),
-                RecoveryPhase(title: "Gentle Movement", duration: "2–4 weeks", description: "Start ROM exercises and light walking."),
-                RecoveryPhase(title: "Strengthening", duration: "4–8 weeks", description: "Progressive quad and hip exercises."),
-                RecoveryPhase(title: "Maintenance", duration: "Ongoing", description: "Regular exercise to prevent recurrence.")
+                RecoveryPhase(title: "Ease the Pain", duration: "1–2 weeks", description: "Avoid activities that make it worse. Ice after exercise."),
+                RecoveryPhase(title: "Start Moving", duration: "2–4 weeks", description: "Begin gentle bending exercises and light walking."),
+                RecoveryPhase(title: "Build Strength", duration: "4–8 weeks", description: "Gradually strengthen your thigh and hip muscles."),
+                RecoveryPhase(title: "Keep It Up", duration: "Ongoing", description: "Regular exercise to stop the pain coming back.")
             ],
             techniques: [
                 TherapyTechnique(name: "Heat Therapy", description: "Apply warmth before exercise to loosen stiff joints and improve blood flow.", icon: "flame"),
@@ -285,10 +285,10 @@ extension LearnCondition {
             range of motion first, then gradually strengthening the rotator cuff and scapular muscles.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Pain Relief", duration: "0–2 weeks", description: "Avoid overhead activities. Ice and gentle pendulum exercises."),
-                RecoveryPhase(title: "ROM Recovery", duration: "2–6 weeks", description: "Assisted shoulder flexion and wall slides."),
-                RecoveryPhase(title: "Strengthening", duration: "6–12 weeks", description: "Resistance band exercises for rotator cuff muscles."),
-                RecoveryPhase(title: "Full Function", duration: "3–6 months", description: "Return to full overhead activities and sport.")
+                RecoveryPhase(title: "Rest & Reduce Pain", duration: "0–2 weeks", description: "Avoid reaching overhead. Ice and gentle swinging exercises."),
+                RecoveryPhase(title: "Get Moving Again", duration: "2–6 weeks", description: "Gentle shoulder raising and wall slides."),
+                RecoveryPhase(title: "Build Strength", duration: "6–12 weeks", description: "Resistance band exercises for shoulder muscles."),
+                RecoveryPhase(title: "Back to Normal", duration: "3–6 months", description: "Return to full overhead reaching and activities.")
             ],
             techniques: [
                 TherapyTechnique(name: "Pendulum Exercises", description: "Lean forward and let the arm swing gently in circles to maintain mobility.", icon: "arrow.clockwise"),
@@ -316,10 +316,10 @@ extension LearnCondition {
             down and back, and gradually restoring pain-free overhead reach.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Modification", duration: "0–2 weeks", description: "Avoid overhead movements. Posture correction."),
-                RecoveryPhase(title: "Mobility", duration: "2–4 weeks", description: "Gentle stretching and scapular exercises."),
-                RecoveryPhase(title: "Strengthening", duration: "4–8 weeks", description: "Rotator cuff and scapular stabilizer strengthening."),
-                RecoveryPhase(title: "Return", duration: "2–3 months", description: "Gradual return to overhead activities.")
+                RecoveryPhase(title: "Take It Easy", duration: "0–2 weeks", description: "Avoid reaching overhead. Focus on sitting and standing straighter."),
+                RecoveryPhase(title: "Gentle Stretching", duration: "2–4 weeks", description: "Gentle stretching and shoulder blade exercises."),
+                RecoveryPhase(title: "Build Strength", duration: "4–8 weeks", description: "Strengthen the shoulder and shoulder blade muscles."),
+                RecoveryPhase(title: "Back to Normal", duration: "2–3 months", description: "Gradually return to reaching and lifting overhead.")
             ],
             techniques: [
                 TherapyTechnique(name: "Posture Correction", description: "Shoulder blade squeezes and chin tucks to improve upper body posture.", icon: "figure.stand"),
@@ -352,10 +352,10 @@ extension LearnCondition {
             within 4–6 weeks of consistent exercise.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Acute Phase", duration: "0–1 week", description: "Gentle walking and basic mobility. Avoid prolonged sitting."),
-                RecoveryPhase(title: "Movement", duration: "1–3 weeks", description: "Increase walking duration. Begin hip and glute exercises."),
-                RecoveryPhase(title: "Core Work", duration: "3–8 weeks", description: "Progressive core strengthening: bird dogs, bridges, planks."),
-                RecoveryPhase(title: "Prevention", duration: "Ongoing", description: "Regular exercise and posture awareness to prevent recurrence.")
+                RecoveryPhase(title: "Ease Into It", duration: "0–1 week", description: "Gentle walking and basic movement. Don't sit too long."),
+                RecoveryPhase(title: "Move More", duration: "1–3 weeks", description: "Walk further each day. Start hip and buttock exercises."),
+                RecoveryPhase(title: "Strengthen Your Core", duration: "3–8 weeks", description: "Build up your core muscles with bird dogs, bridges, and planks."),
+                RecoveryPhase(title: "Keep It Up", duration: "Ongoing", description: "Regular exercise and sitting awareness to stop the pain coming back.")
             ],
             techniques: [
                 TherapyTechnique(name: "Cat-Cow Stretch", description: "Gentle spinal flexion and extension on hands and knees.", icon: "arrow.up.arrow.down"),
@@ -382,10 +382,10 @@ extension LearnCondition {
             tight chest muscles, and building awareness of spinal alignment throughout the day.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Awareness", duration: "Week 1", description: "Set reminders to check posture every 30 minutes."),
-                RecoveryPhase(title: "Stretching", duration: "Weeks 1–3", description: "Chest doorway stretches and chin tucks."),
-                RecoveryPhase(title: "Strengthening", duration: "Weeks 3–8", description: "Wall slides, rows, and core exercises."),
-                RecoveryPhase(title: "Habit", duration: "Ongoing", description: "Posture becomes automatic with consistent practice.")
+                RecoveryPhase(title: "Notice How You Sit", duration: "Week 1", description: "Set reminders to check your posture every 30 minutes."),
+                RecoveryPhase(title: "Start Stretching", duration: "Weeks 1–3", description: "Doorway chest stretches and chin tucks."),
+                RecoveryPhase(title: "Build Strength", duration: "Weeks 3–8", description: "Wall slides, rows, and core exercises."),
+                RecoveryPhase(title: "Make It a Habit", duration: "Ongoing", description: "Good posture becomes natural with daily practice.")
             ],
             techniques: [
                 TherapyTechnique(name: "Chin Tucks", description: "Pull the chin straight back to align the head over the shoulders.", icon: "arrow.backward"),
@@ -418,10 +418,10 @@ extension LearnCondition {
             restoring range of motion, then building ankle stability and proprioception.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "RICE Phase", duration: "0–3 days", description: "Rest, ice, compression, elevation. Protected weight-bearing."),
-                RecoveryPhase(title: "Early Motion", duration: "3–14 days", description: "Gentle ankle circles, alphabet tracing with toes."),
-                RecoveryPhase(title: "Strengthening", duration: "2–6 weeks", description: "Resistance band exercises, calf raises, balance work."),
-                RecoveryPhase(title: "Return", duration: "6–12 weeks", description: "Sport-specific agility and confidence building.")
+                RecoveryPhase(title: "Rest, Ice & Elevate", duration: "0–3 days", description: "Rest, ice, wrap it up, and keep it raised. Walk carefully."),
+                RecoveryPhase(title: "Start Moving Gently", duration: "3–14 days", description: "Gentle ankle circles and tracing the alphabet with your toes."),
+                RecoveryPhase(title: "Build Strength", duration: "2–6 weeks", description: "Band exercises, calf raises, and balance practice."),
+                RecoveryPhase(title: "Back to Normal", duration: "6–12 weeks", description: "Return to sports and daily activities with confidence.")
             ],
             techniques: [
                 TherapyTechnique(name: "RICE Method", description: "Rest, Ice, Compression, Elevation — essential in the first 72 hours.", icon: "snowflake"),
@@ -450,10 +450,10 @@ extension LearnCondition {
             consistent daily stretching and exercise.
             """,
             recoveryPhases: [
-                RecoveryPhase(title: "Gentle Stretch", duration: "0–2 weeks", description: "Towel stretches and calf stretches against a wall."),
-                RecoveryPhase(title: "Active ROM", duration: "2–4 weeks", description: "Ankle circles, heel raises, and rocking exercises."),
-                RecoveryPhase(title: "Loading", duration: "4–6 weeks", description: "Squats with focus on ankle dorsiflexion. Balance work."),
-                RecoveryPhase(title: "Full Return", duration: "6–8 weeks", description: "Normal walking and activities without restriction.")
+                RecoveryPhase(title: "Gentle Stretching", duration: "0–2 weeks", description: "Towel stretches and calf stretches against a wall."),
+                RecoveryPhase(title: "Get Moving Again", duration: "2–4 weeks", description: "Ankle circles, heel raises, and rocking exercises."),
+                RecoveryPhase(title: "Put Weight On It", duration: "4–6 weeks", description: "Squats to bend the ankle more. Balance practice."),
+                RecoveryPhase(title: "Back to Normal", duration: "6–8 weeks", description: "Walking and daily activities without restriction.")
             ],
             techniques: [
                 TherapyTechnique(name: "Wall Calf Stretch", description: "Lean into a wall with the stiff ankle behind to stretch the calf and Achilles.", icon: "arrow.forward"),

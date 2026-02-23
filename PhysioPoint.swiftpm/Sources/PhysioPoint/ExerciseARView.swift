@@ -235,6 +235,8 @@ public struct ExerciseARView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
+        .navigationBarHidden(true)
         .onAppear {
             // All exercises have tracking configs — configure the engine with correct parameters
             if let config = appState.selectedExercise?.trackingConfig {
