@@ -353,4 +353,9 @@ struct Exercise: Identifiable, Hashable, Codable {
     static let ankleExercises: [Exercise] = [
         .singleLegBalance, .standingHipFlexion, .seatedKneeExtension
     ]
+
+    /// All exercises across every body area
+    static var allExercises: [Exercise] {
+        kneeExercises + elbowExercises + shoulderExercises + hipExercises + ankleExercises
+    }
 }

@@ -70,8 +70,7 @@ struct PhysioChatSheet: View {
                     TextField("Describe your concern...", text: $input, axis: .vertical)
                         .lineLimit(1...3)
                         .padding(10)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        .physioGlass(.inputBar)
 
                     Button {
                         let text = input.trimmingCharacters(in: .whitespaces)
@@ -135,8 +134,7 @@ struct PhysioChatSheet: View {
                     .foregroundColor(.secondary)
             }
             .padding(14)
-            .background(Color(.systemBackground))
-            .cornerRadius(16)
+            .physioGlass(.card)
             .shadow(color: .black.opacity(0.04), radius: 4)
 
             // Tap-to-ask chips
@@ -161,8 +159,7 @@ struct PhysioChatSheet: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(12)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .physioGlass(.card)
                 }
             }
         }
@@ -207,7 +204,6 @@ struct PhysioChatSheet: View {
             }
         }
         .padding(12)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
+        .physioGlass(.card)
     }
 }

@@ -21,6 +21,7 @@ enum SessionFeeling: String, CaseIterable {
 struct SummaryView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedFeeling: SessionFeeling? = nil
     @State private var animateCheckmark = false
     @State private var animateCards = false
@@ -166,7 +167,7 @@ struct SummaryView: View {
             }
         }
         .padding(.vertical, 16)
-        .background(glassCard)
+        .physioGlass(.card)
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
     }
@@ -186,7 +187,7 @@ struct SummaryView: View {
             }
         }
         .padding(16)
-        .background(glassCard)
+        .physioGlass(.card)
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
     }
@@ -229,7 +230,7 @@ struct SummaryView: View {
                     }
                 }
                 .padding(16)
-                .background(glassCard)
+                .physioGlass(.card)
                 .opacity(animateCards ? 1 : 0)
                 .offset(y: animateCards ? 0 : 20)
             }
@@ -289,7 +290,7 @@ struct SummaryView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(glassCard)
+            .physioGlass(.card)
 
             // How did it feel?
             VStack(spacing: 10) {
@@ -332,7 +333,7 @@ struct SummaryView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .padding(.horizontal, 8)
-            .background(glassCard)
+            .physioGlass(.card)
         }
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
@@ -372,6 +373,11 @@ struct SummaryView: View {
             Button {
                 appState.activeSlotID = nil
                 appState.navigationPath.removeLast(appState.navigationPath.count)
+                // Signal Assistive root to pop to home, then dismiss cover
+                NotificationCenter.default.post(name: .assistiveReturnHome, object: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    dismiss()
+                }
             } label: {
                 Text("Done")
                     .font(.title3)
@@ -424,13 +430,5 @@ struct SummaryView: View {
             .frame(width: 1, height: 60)
     }
 
-    private var glassCard: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(PPColor.actionBlue.opacity(0.08), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-    }
+
 }

@@ -83,8 +83,7 @@ struct BodyAreaLearnView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
-        .cornerRadius(10)
+        .physioGlass(.card)
     }
 }
 
@@ -122,9 +121,7 @@ private struct ConditionRowCard: View {
                 .foregroundColor(.secondary)
         }
         .padding(14)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .physioGlass(.card)
         .padding(.horizontal)
         .frame(minHeight: 60)
         .contentShape(Rectangle())

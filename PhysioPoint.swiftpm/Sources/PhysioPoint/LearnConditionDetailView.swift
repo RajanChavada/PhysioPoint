@@ -93,9 +93,7 @@ struct LearnConditionDetailView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemBackground))
-        .cornerRadius(18)
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .physioGlass(.card)
         .padding(.horizontal)
     }
 }

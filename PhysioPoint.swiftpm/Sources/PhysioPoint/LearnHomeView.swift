@@ -48,9 +48,7 @@ struct LearnHomeView: View {
                                 .font(.subheadline)
                         }
                         .padding(12)
-                        .background(Color(.systemBackground))
-                        .cornerRadius(14)
-                        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+                        .physioGlass(.inputBar)
 
                         // 2×2 body area grid
                         LazyVGrid(columns: [
@@ -125,9 +123,7 @@ private struct BodyAreaCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground))
-        .cornerRadius(18)
-        .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
+        .physioGlass(.card)
     }
 }
 
@@ -151,9 +147,7 @@ private struct EssentialCard: View {
         .frame(width: 140, alignment: .leading)
         .frame(minHeight: 50)
         .padding(14)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+        .physioGlass(.card)
     }
 }
 

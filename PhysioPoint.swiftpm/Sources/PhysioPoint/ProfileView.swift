@@ -52,9 +52,7 @@ struct ProfileView: View {
                             profileStat(value: "—", label: "Streak\nDays", icon: "flame.fill")
                         }
                         .padding(.vertical, 16)
-                        .background(Color(.systemBackground))
-                        .cornerRadius(18)
-                        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+                        .physioGlass(.card)
 
                         // Settings rows
                         VStack(spacing: 0) {
@@ -63,10 +61,12 @@ struct ProfileView: View {
                             settingsRow(icon: "accessibility", title: "Accessibility", color: PPColor.actionBlue)
                             Divider().padding(.leading, 52)
                             settingsRow(icon: "info.circle.fill", title: "About PhysioPoint", color: .secondary)
+                            Divider().padding(.leading, 52)
+                            AssistiveAccessToggleRow()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
                         }
-                        .background(Color(.systemBackground))
-                        .cornerRadius(18)
-                        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+                        .physioGlass(.card)
 
                         // Disclaimer
                         HStack(spacing: 8) {

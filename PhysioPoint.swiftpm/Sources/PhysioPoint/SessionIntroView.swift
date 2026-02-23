@@ -75,8 +75,7 @@ struct SessionIntroView: View {
                         statBadge(icon: "repeat", label: "\(exercise.reps) times", subtitle: "Repeat")
                     }
                     .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(16)
+                    .physioGlass(.card)
                     .padding(.horizontal)
                     
                     // Step-by-step guide
@@ -230,8 +229,7 @@ struct SessionIntroView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .physioGlass(.card)
         .padding(.horizontal)
     }
     

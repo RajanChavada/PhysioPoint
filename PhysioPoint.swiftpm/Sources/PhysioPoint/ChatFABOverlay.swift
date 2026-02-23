@@ -14,23 +14,12 @@ struct ChatFABOverlay: View {
             Color.clear  // pass-through
 
             Button { showChat.toggle() } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [PPColor.actionBlue, PPColor.vitalityTeal],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 58, height: 58)
-                        .shadow(color: PPColor.actionBlue.opacity(0.35), radius: 12, y: 4)
-
-                    Image(systemName: "brain.head.profile")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                }
+                Image(systemName: "brain.head.profile")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .frame(width: 58, height: 58)
             }
+            .physioGlass(.fab)
             .padding(.trailing, 20)
             .padding(.bottom, 90)  // sits above tab bar
         }

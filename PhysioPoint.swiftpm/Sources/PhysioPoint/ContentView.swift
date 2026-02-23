@@ -5,17 +5,25 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
+    @AppStorage("simulateAssistiveAccess") private var simulateAssistiveAccess = false
 
     var body: some View {
-        if appState.hasCompletedOnboarding {
-            MainTabView()
-                .environmentObject(appState)
-                .environmentObject(storage)
-        } else {
-            OnboardingView()
-                .environmentObject(appState)
-                .environmentObject(storage)
+        Group {
+            if !appState.hasCompletedOnboarding {
+                OnboardingView()
+                    .environmentObject(appState)
+                    .environmentObject(storage)
+            } else if simulateAssistiveAccess {
+                AssistiveAccessRootView()
+                    .environmentObject(appState)
+                    .environmentObject(storage)
+            } else {
+                MainTabView()
+                    .environmentObject(appState)
+                    .environmentObject(storage)
+            }
         }
+        .environment(\.isAssistiveAccessActive, simulateAssistiveAccess)
     }
 }
 

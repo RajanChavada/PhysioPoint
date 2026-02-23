@@ -82,8 +82,7 @@ struct ChatBubble: View {
                                     .foregroundColor(PPColor.actionBlue)
                             }
                             .padding(10)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(10)
+                            .physioGlass(.card)
                         }
                     }
                 }
@@ -98,9 +97,7 @@ struct ChatBubble: View {
             }
         }
         .padding(12)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 4)
+        .physioGlass(.card)
         .frame(maxWidth: 300, alignment: .leading)
     }
 
