@@ -55,6 +55,8 @@ struct SummaryView: View {
                         repConsistencyCard
                         vsLastSessionCard
                         bottomRow
+                        feelingResponseCard
+                        streakAndNextSection
                         disclaimerText
                     }
                     .padding(.horizontal, 20)
@@ -106,9 +108,11 @@ struct SummaryView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
 
-            Text("Great effort. Here's how you did.")
+            Text(praiseMessage)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
         }
     }
 
@@ -302,6 +306,7 @@ struct SummaryView: View {
                         Button {
                             withAnimation(.spring(response: 0.3)) {
                                 selectedFeeling = feeling
+                                storage.lastFeeling = feeling.rawValue
                             }
                         } label: {
                             HStack(spacing: 6) {
@@ -339,6 +344,70 @@ struct SummaryView: View {
         .offset(y: animateCards ? 0 : 20)
     }
 
+    // MARK: - Feeling Response Card
+
+    private var feelingResponseCard: some View {
+        Group {
+            if let feeling = selectedFeeling, !feelingResponse(feeling).isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "quote.opening")
+                        .font(.title3)
+                        .foregroundColor(PPColor.vitalityTeal)
+                    Text(feelingResponse(feeling))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineSpacing(4)
+                }
+                .padding(16)
+                .physioGlass(.card)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .animation(.easeInOut, value: selectedFeeling)
+            }
+        }
+    }
+
+    // MARK: - Streak & What's Next
+
+    private var streakAndNextSection: some View {
+        VStack(spacing: 12) {
+            // Streak badge
+            if storage.currentStreak >= 2 {
+                Label("\(storage.currentStreak)-day streak 🔥", systemImage: "flame.fill")
+                    .foregroundColor(.orange)
+                    .font(.subheadline.bold())
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .physioGlass(.pill)
+            }
+
+            // What's next
+            if let nextSlot = storage.nextIncompleteSlot() {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "arrow.forward.circle.fill")
+                            .foregroundColor(PPColor.actionBlue)
+                        Text("Up Next")
+                            .font(.headline)
+                    }
+
+                    Text("\(nextSlot.exerciseName) · \(nextSlot.label)")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.primary)
+
+                    Text("\(nextSlot.exerciseReps) reps × \(nextSlot.exerciseSets) sets")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(PPColor.actionBlue.opacity(0.08))
+                .cornerRadius(14)
+            }
+        }
+        .opacity(animateCards ? 1 : 0)
+        .offset(y: animateCards ? 0 : 20)
+    }
+
     // MARK: - Disclaimer
 
     private var disclaimerText: some View {
@@ -347,6 +416,38 @@ struct SummaryView: View {
             .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 8)
+    }
+
+    // MARK: - Coaching Logic
+
+    private var praiseMessage: String {
+        let exercise = appState.selectedExercise
+        let hitRange = exercise.map {
+            metrics.bestAngle >= $0.targetAngleRange.lowerBound
+        } ?? true
+        let hitReps = metrics.repsCompleted >= metrics.targetReps && metrics.targetReps > 0
+
+        switch (hitRange, hitReps) {
+        case (true, true):
+            return "You nailed it — full range and all your reps. 🎯"
+        case (true, false):
+            return "Great range of motion today! Try pushing for more reps next time."
+        case (false, true):
+            return "All reps done! Work on bending a little deeper each time."
+        default:
+            return "Every session counts. You showed up — that's what matters. 💪"
+        }
+    }
+
+    private func feelingResponse(_ feeling: SessionFeeling) -> String {
+        switch feeling {
+        case .easier:
+            return "That's a great sign — your body is adapting. We'll gradually increase range next session."
+        case .same:
+            return "Steady progress. Consistency is the most important thing right now."
+        case .harder:
+            return "That's okay — some days are tougher. Make sure you've rested and had water."
+        }
     }
 
     // MARK: - Done Button

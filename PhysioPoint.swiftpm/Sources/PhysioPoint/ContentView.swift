@@ -306,6 +306,12 @@ struct HomeView: View {
                         // Start new session
                         startSessionCard
 
+                        // Recovery pulse (shown after first completed session)
+                        if storage.sessionCount > 0 || storage.lastFeeling != nil {
+                            RecoveryPulseCard()
+                                .environmentObject(storage)
+                        }
+
                         // How it works
                         howItWorksSection
 

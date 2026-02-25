@@ -123,4 +123,52 @@ class StorageService: ObservableObject {
         else { return [] }
         return metrics
     }
+
+    // MARK: - Recovery Pulse Data
+
+    /// Total session count (for blurb engine)
+    var sessionCount: Int { recentMetrics.count }
+
+    /// Number of slots completed today
+    var todayCompletedCount: Int {
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        return allSlots.filter { slot in
+            guard slot.isCompleted, let at = slot.completedAt else { return false }
+            return at >= startOfDay
+        }.count
+    }
+
+    /// Consecutive-day streak with at least 1 completed slot
+    var currentStreak: Int {
+        var streak = 0
+        var date = Calendar.current.startOfDay(for: Date())
+        while hasCompletedSession(on: date) {
+            streak += 1
+            guard let prev = Calendar.current.date(byAdding: .day, value: -1, to: date) else { break }
+            date = prev
+        }
+        return streak
+    }
+
+    private func hasCompletedSession(on date: Date) -> Bool {
+        let next = Calendar.current.date(byAdding: .day, value: 1, to: date) ?? date
+        return allSlots.contains { slot in
+            guard slot.isCompleted, let at = slot.completedAt else { return false }
+            return at >= date && at < next
+        }
+    }
+
+    /// Next incomplete slot across all plans
+    func nextIncompleteSlot() -> PlanSlot? {
+        allSlots.first { !$0.isCompleted }
+    }
+
+    /// Last feeling saved from SummaryView emoji tap
+    var lastFeeling: String? {
+        get { defaults.string(forKey: "pp_last_feeling") }
+        set {
+            defaults.set(newValue, forKey: "pp_last_feeling")
+            objectWillChange.send()
+        }
+    }
 }

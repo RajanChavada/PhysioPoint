@@ -6,11 +6,21 @@ import SwiftUI
 struct AssistiveAccessRootView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var engine: PhysioGuardEngine
+    @EnvironmentObject var storage: StorageService
     @State private var navResetID = UUID()
 
     var body: some View {
         NavigationStack {
             List {
+                // Recovery card (shown after first session)
+                if storage.sessionCount > 0 || storage.lastFeeling != nil {
+                    Section {
+                        AccessibilityRecoveryCard()
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                }
+
                 NavigationLink(destination: AssistiveBodyPickerView()) {
                     AssistiveMenuRow(
                         icon: "figure.walk",
