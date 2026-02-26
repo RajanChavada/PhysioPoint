@@ -21,6 +21,7 @@ enum SessionFeeling: String, CaseIterable {
 struct SummaryView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
+    @EnvironmentObject var settings: PhysioPointSettings
     @Environment(\.dismiss) private var dismiss
     @State private var selectedFeeling: SessionFeeling? = nil
     @State private var animateCheckmark = false
@@ -52,7 +53,7 @@ struct SummaryView: View {
                     VStack(spacing: 20) {
                         heroSection
                         statsCard
-                        repConsistencyCard
+                        ptFeedbackCard
                         vsLastSessionCard
                         bottomRow
                         feelingResponseCard
@@ -116,105 +117,132 @@ struct SummaryView: View {
         }
     }
 
-    // MARK: - Stats Card (3 metrics)
+    // MARK: - Quality Cards
 
     private var statsCard: some View {
-        HStack(spacing: 0) {
-            // Reps completed ring
-            statItem(label: "Reps\nCompleted") {
-                ZStack {
-                    Circle()
-                        .stroke(PPColor.actionBlue.opacity(0.15), lineWidth: 5)
-                        .frame(width: 52, height: 52)
-                    Circle()
-                        .trim(from: 0, to: metrics.targetReps > 0 ? CGFloat(metrics.repsCompleted) / CGFloat(metrics.targetReps) : 1)
-                        .stroke(PPColor.actionBlue, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .frame(width: 52, height: 52)
-                        .rotationEffect(.degrees(-90))
-                    Text("\(metrics.repsCompleted)/\(metrics.targetReps)")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(PPColor.actionBlue)
-                }
+        VStack(spacing: 16) {
+            HStack(spacing: 12) {
+                SummaryMetricCard(
+                    value: metrics.controlLabel,
+                    label: "Movement control",
+                    sublabel: "smoothness rating",
+                    icon: "waveform.path.ecg",
+                    color: .blue
+                )
+
+                SummaryMetricCard(
+                    value: String(format: "%.0f%%", rangeAchieved * 100),
+                    label: "Range achieved",
+                    sublabel: "of target bend",
+                    icon: "ruler.fill",
+                    color: .orange
+                )
             }
-
-            thinDivider
-
-            // Best bend
-            statItem(label: "Best Bend") {
-                VStack(spacing: 2) {
-                    HStack(alignment: .top, spacing: 1) {
-                        Image(systemName: "angle")
-                            .font(.system(size: 14))
-                            .foregroundColor(PPColor.vitalityTeal)
-                        Text("\(Int(metrics.bestAngle))°")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                    }
-                    Text("Target: \(metrics.targetRangeLabel)")
-                        .font(.system(size: 9))
+            
+            // Beta Rep Counter
+            if settings.repCountingBeta {
+                HStack(spacing: 8) {
+                    Image(systemName: "flask.fill")
+                        .foregroundColor(.orange)
+                    Text("Rep counting (beta): \(metrics.repsCompleted) cycles detected")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
+                    Spacer()
                 }
-            }
-
-            thinDivider
-
-            // Time in good form
-            statItem(label: "Time in\nGood Form") {
-                VStack(spacing: 2) {
-                    HStack(alignment: .top, spacing: 1) {
-                        Image(systemName: "timer")
-                            .font(.system(size: 14))
-                            .foregroundColor(PPColor.recoveryIndigo)
-                        Text("\(Int(metrics.timeInGoodForm))s")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                    }
-                }
+                .padding(.horizontal, 8)
+                .padding(.top, 4)
             }
         }
-        .padding(.vertical, 16)
-        .physioGlass(.card)
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
     }
 
-    // MARK: - Rep Consistency
+    private var rangeAchieved: Double {
+        guard let config = appState.selectedExercise?.trackingConfig else { return 0 }
+        let target = config.targetRange.upperBound
+        return min(1.0, metrics.bestAngle / target)
+    }
 
-    private var repConsistencyCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Rep Consistency")
-                .font(.headline)
+    private var ptFeedbackCard: some View {
+        VStack(spacing: 14) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "person.fill.checkmark")
+                    .foregroundColor(PPColor.actionBlue)
+                    .font(.subheadline)
+                Text("Your PT Feedback")
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+            }
 
-            let columns = [GridItem(.adaptive(minimum: 90), spacing: 8)]
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-                ForEach(metrics.repResults) { rep in
-                    repChip(rep)
+            // ── Positive row ──
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 18))
                 }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("What you did well")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    Text(metrics.sessionFeedback.positiveObservation.isEmpty ? "Great job completing your session!" : metrics.sessionFeedback.positiveObservation)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineSpacing(3)
+                }
+            }
+
+            Divider().opacity(0.4)
+
+            // ── Growth row ──
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "arrow.up.circle.fill")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 18))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Focus for next time")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    Text(metrics.sessionFeedback.growthObservation.isEmpty ? "Keep up the consistent effort." : metrics.sessionFeedback.growthObservation)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineSpacing(3)
+                }
+            }
+
+            Divider().opacity(0.4)
+
+            // ── Journey message ──
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .foregroundColor(PPColor.actionBlue)
+                    .font(.subheadline)
+                Text(metrics.sessionFeedback.journeyMessage.isEmpty ? "Consistency is the path to recovery." : metrics.sessionFeedback.journeyMessage)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .lineSpacing(3)
+                    .italic()
             }
         }
         .padding(16)
         .physioGlass(.card)
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
-    }
-
-    private func repChip(_ rep: RepResult) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: rep.quality == .good ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.system(size: 13))
-                .foregroundColor(rep.quality == .good ? PPColor.vitalityTeal : .orange)
-
-            Text("Rep \(rep.repNumber)")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(rep.quality == .good ? PPColor.vitalityTeal.opacity(0.12) : Color.orange.opacity(0.12))
-        )
-        .overlay(
-            Capsule()
-                .stroke(rep.quality == .good ? PPColor.vitalityTeal.opacity(0.3) : Color.orange.opacity(0.3), lineWidth: 1)
-        )
     }
 
     // MARK: - Vs. Last Session
@@ -530,6 +558,35 @@ struct SummaryView: View {
             .fill(PPColor.actionBlue.opacity(0.1))
             .frame(width: 1, height: 60)
     }
+}
 
+// MARK: - Helper Views
 
+struct SummaryMetricCard: View {
+    let value: String
+    let label: String
+    let sublabel: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+            VStack(spacing: 2) {
+                Text(label)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(sublabel)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .physioGlass(.card)
+    }
 }

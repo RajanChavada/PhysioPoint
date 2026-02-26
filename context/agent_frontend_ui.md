@@ -880,3 +880,397 @@ Maybe something like this:
 ├─────────────────────────────────┤
 │  How It Works                   │
 └─────────────────────────────────┘
+
+
+-- 
+
+## Feature log - navbar on the bottom + knowledge center 
+- we are going to now create a navbar at the bottom of the screen and then also create a knowledge center icon where the user can go and learn about common rehab things and other things related to their injury or condition. 
+
+## App Navigation (Tab Bar)
+The bottom bar should have 4 tabs that stay consistent across the whole app:
+
+```swift
+enum AppTab: String, CaseIterable {
+    case home     = "Home"
+    case schedule = "Schedule"
+    case learn    = "Learn"
+    case profile  = "Profile"
+}
+
+// SF Symbols
+// home     → "house.fill"
+// schedule → "calendar"
+// learn    → "book.fill"         ← active in your mockup
+// profile  → "person.fill"
+The TabView wraps your four root views and persists state so navigating back to Learn returns the user to where they were (use .tabItem + NavigationStack per tab, not a single shared nav stack).
+```
+## Learn Tab: 3-Level Navigation
+```text
+LearnHomeView
+  └── BodyAreaLearnView  (e.g. "Knee")
+        └── ConditionDetailView  (e.g. "ACL Tear")
+              ├── OverviewSection
+              ├── RecoveryPhaseSection  (timeline)
+              ├── TechniqueCardsSection
+              ├── AtHomeRehabSection    ← links back to Exercise session
+              └── WhenToSeeDoctorSection
+```
+## Level 1: LearnHomeView (matches your mockup)
+This is exactly what you've built in the image. The structure in SwiftUI:
+
+```swift
+struct LearnHomeView: View {
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+
+                    // Hero header
+                    LearnHeaderView()          // title + subtitle
+
+                    // Search bar
+                    SearchBar(placeholder: "Search conditions, body parts...")
+
+                    // 2x2 body area grid
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                        ForEach(LearnBodyArea.allCases) { area in
+                            NavigationLink(destination: BodyAreaLearnView(area: area)) {
+                                BodyAreaCard(area: area)
+                            }
+                        }
+                    }
+
+                    // Recovery Essentials horizontal scroll
+                    SectionHeader(title: "Recovery Essentials")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            EssentialCard(title: "Sleep & Recovery", icon: "bed.double.fill")
+                            EssentialCard(title: "Hydration & Nutrition", icon: "drop.fill")
+                            EssentialCard(title: "Pain Management", icon: "waveform.path.ecg")
+                            EssentialCard(title: "Stretching Basics", icon: "figure.flexibility")
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationBarHidden(true)
+        }
+    }
+}
+```
+## BodyAreaCard component:
+
+```swift
+struct BodyAreaCard: View {
+    let area: LearnBodyArea
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(area.imageName)           // use the anatomical illustration
+                .resizable().scaledToFit()
+                .frame(height: 70)
+            Text(area.displayName)
+                .font(.headline).foregroundColor(.blue)
+            Text(area.subtitle)             // "ACL, Dislocation, Rehab tips."
+                .font(.caption).foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.06), radius: 6)
+    }
+}
+```
+## LearnBodyArea enum (mirrors your BodyArea but learn-specific):
+
+```swift
+enum LearnBodyArea: String, CaseIterable, Identifiable {
+    case knee        = "Knee"
+    case shoulder    = "Shoulder"
+    case backAndCore = "Back & Core"
+    case ankleAndFoot = "Ankle & Foot"
+    case elbow       = "Elbow"
+    case hip         = "Hip"
+
+    var subtitle: String {
+        switch self {
+        case .knee:         return "ACL, Dislocation, Rehab tips."
+        case .shoulder:     return "Rotator Cuff, Impingement."
+        case .backAndCore:  return "Lower Pain, Posture, Strength."
+        case .ankleAndFoot: return "Sprains, Stability, Mobility."
+        case .elbow:        return "Tennis Elbow, Stiffness."
+        case .hip:          return "Hip Flexor, Bursitis."
+        }
+    }
+}
+```
+## Level 2: BodyAreaLearnView (tapped into "Knee")
+This shows all the conditions for that body area as a scrollable list of cards:
+
+```swift
+struct BodyAreaLearnView: View {
+    let area: LearnBodyArea
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+
+                // Area hero banner
+                AreaHeroBanner(area: area)
+                // Large illustration + area name + 1-line summary
+
+                // Conditions list
+                SectionHeader(title: "Common Conditions")
+                ForEach(area.conditions) { condition in
+                    NavigationLink(destination: ConditionDetailView(condition: condition)) {
+                        ConditionRowCard(condition: condition)
+                    }
+                }
+
+                // Quick stats strip (e.g. "Avg recovery: 6–12 weeks")
+                RecoveryStatsStrip(area: area)
+            }
+            .padding()
+        }
+        .navigationTitle(area.displayName)
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+```
+## ConditionRowCard:
+
+```swift
+struct ConditionRowCard: View {
+    let condition: LearnCondition
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: condition.systemIcon)
+                .font(.title2)
+                .foregroundColor(.blue)
+                .frame(width: 44, height: 44)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(10)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(condition.name).font(.headline)
+                Text(condition.shortDescription).font(.caption).foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.05), radius: 4)
+    }
+}
+```
+##Level 3: ConditionDetailView (the actual knowledge page)
+This is the richest screen — structured into collapsible sections so it doesn't overwhelm:
+
+```swift
+struct ConditionDetailView: View {
+    let condition: LearnCondition
+    @State private var expandedSection: DetailSection? = .overview
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+
+                // 1. Overview card
+                DetailSectionCard(
+                    section: .overview,
+                    expanded: $expandedSection,
+                    content: OverviewSectionView(condition: condition)
+                )
+
+                // 2. Recovery Timeline (visual phase strip)
+                DetailSectionCard(
+                    section: .timeline,
+                    expanded: $expandedSection,
+                    content: RecoveryTimelineView(phases: condition.recoveryPhases)
+                )
+
+                // 3. Therapy Techniques (horizontal card scroll)
+                DetailSectionCard(
+                    section: .techniques,
+                    expanded: $expandedSection,
+                    content: TechniqueCardsView(techniques: condition.techniques)
+                )
+
+                // 4. At-Home Rehab (links to AR exercise session)
+                DetailSectionCard(
+                    section: .atHomeRehab,
+                    expanded: $expandedSection,
+                    content: AtHomeRehabView(condition: condition)
+                )
+
+                // 5. When to See a Doctor
+                DetailSectionCard(
+                    section: .whenToSeeDoctor,
+                    expanded: $expandedSection,
+                    content: DoctorWarningsView(warnings: condition.redFlags)
+                )
+            }
+            .padding()
+        }
+        .navigationTitle(condition.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+```
+## Recovery Timeline Component
+Visual horizontal strip showing phases — this is the most impactful UI piece:
+
+```swift
+struct RecoveryTimelineView: View {
+    let phases: [RecoveryPhase]
+    // Phase example for knee dislocation:
+    // Phase 1: "Acute (0-2 wks)" — Rest, ice, compression
+    // Phase 2: "Early Rehab (2-6 wks)" — ROM exercises, quad sets
+    // Phase 3: "Strengthening (6-12 wks)" — Hip, glute work
+    // Phase 4: "Return to Activity (3-6 mo)" — Balance, sport prep
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(Array(phases.enumerated()), id: \.offset) { index, phase in
+                    VStack(spacing: 6) {
+                        Circle()
+                            .fill(phase.isComplete ? Color.blue : Color.gray.opacity(0.3))
+                            .frame(width: 12, height: 12)
+                        Text(phase.title)
+                            .font(.caption).bold()
+                            .multilineTextAlignment(.center)
+                            .frame(width: 80)
+                        Text(phase.duration)
+                            .font(.caption2).foregroundColor(.secondary)
+                            .frame(width: 80)
+                    }
+                    if index < phases.count - 1 {
+                        Rectangle()
+                            .frame(width: 30, height: 2)
+                            .foregroundColor(.blue.opacity(0.3))
+                            .padding(.bottom, 30)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+}
+```
+## At-Home Rehab Section (Bridge to AR)
+This directly links the learn content to your existing exercise session:
+
+```swift
+struct AtHomeRehabView: View {
+    let condition: LearnCondition
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("These exercises are available in your AR session tracker.")
+                .font(.caption).foregroundColor(.secondary)
+
+            ForEach(condition.recommendedExerciseNames, id: \.self) { exerciseName in
+                HStack {
+                    Image(systemName: "figure.walk")
+                        .foregroundColor(.blue)
+                    Text(exerciseName).font(.subheadline)
+                    Spacer()
+                    NavigationLink("Start →") {
+                        // Route to your existing ARSessionView
+                        // passing the matched Exercise object
+                        ARExerciseLaunchView(exerciseName: exerciseName)
+                    }
+                    .font(.subheadline).foregroundColor(.blue)
+                }
+                .padding(.vertical, 4)
+                Divider()
+            }
+        }
+    }
+}
+```
+## Data Model for Learn Content
+```swift
+struct LearnCondition: Identifiable {
+    let id: UUID
+    let name: String
+    let shortDescription: String
+    let systemIcon: String
+    let overview: String                        // 2-3 paragraph text
+    let recoveryPhases: [RecoveryPhase]
+    let techniques: [TherapyTechnique]
+    let recommendedExerciseNames: [String]      // matches Exercise.name exactly
+    let redFlags: [String]                      // "See a doctor if..."
+}
+
+struct RecoveryPhase: Identifiable {
+    let id = UUID()
+    let title: String
+    let duration: String
+    let description: String
+    var isComplete: Bool = false
+}
+
+struct TherapyTechnique: Identifiable {
+    let id = UUID()
+    let name: String
+    let description: String
+    let icon: String
+    // e.g. "RICE Method", "Cold Therapy", "TENS", "Compression Taping"
+}
+```
+Complete Tab Bar Implementation
+```swift
+@main
+struct RehabApp: App {
+    @State private var selectedTab: AppTab = .home
+
+    var body: some Scene {
+        WindowGroup {
+            TabView(selection: $selectedTab) {
+                HomeView()
+                    .tabItem { Label("Home", systemImage: "house.fill") }
+                    .tag(AppTab.home)
+
+                ScheduleView()
+                    .tabItem { Label("Schedule", systemImage: "calendar") }
+                    .tag(AppTab.schedule)
+
+                LearnHomeView()
+                    .tabItem { Label("Learn", systemImage: "book.fill") }
+                    .tag(AppTab.learn)
+
+                ProfileView()
+                    .tabItem { Label("Profile", systemImage: "person.fill") }
+                    .tag(AppTab.profile)
+            }
+            .accentColor(.blue)
+        }
+    }
+}
+```
+Full Screen Flow Summary
+```text
+TabBar
+├── Home          → BodyArea picker → Condition picker → AR Session
+├── Schedule      → Upcoming sessions, history
+├── Learn ←       → LearnHomeView
+│     ├── Knee    → BodyAreaLearnView
+│     │     ├── ACL Tear         → ConditionDetailView
+│     │     ├── Knee Dislocation → ConditionDetailView
+│     │     │     ├── Overview
+│     │     │     ├── Recovery Timeline (4 phases)
+│     │     │     ├── Techniques (RICE, TENS, etc.)
+│     │     │     ├── At-Home Rehab ──→ AR Session (deep link)
+│     │     │     └── When to See Doctor
+│     │     └── General Knee Pain → ...
+│     ├── Shoulder → ...
+│     └── Recovery Essentials → Sleep, Hydration, Pain Mgmt
+└── Profile       → Progress, streaks, settings
+```
+The key architectural win is recommendedExerciseNames: [String] on LearnCondition — it directly matches Exercise.name strings so the "Start →" button in the Learn tab deep-links straight into your existing AR session flow with zero duplication.

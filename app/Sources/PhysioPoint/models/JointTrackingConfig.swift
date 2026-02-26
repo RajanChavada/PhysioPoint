@@ -4,325 +4,361 @@ import Foundation
 
 /// Defines how the AR engine should interpret the angle measurement for a given exercise.
 /// Labels are for educational demo only — not medical prescriptions.
-enum TrackingMode: String, Hashable, Codable {
-    case angleBased          // Primary: measure joint angle, count reps on hold
-    case holdDuration        // Primary: hold a position for N seconds (isometric)
-    case rangeOfMotion       // Primary: track range through a movement arc
-    case repetitionCounting  // Primary: count full bend/extend cycles
-    case timerOnly           // Fallback: no skeleton tracking possible (grip, rotation)
+public enum TrackingMode: String, Hashable, Codable {
+    case angleBased          // Measure joint angle, count reps when held in zone
+    case holdDuration        // Hold a position for N seconds (isometric)
+    case rangeOfMotion       // Track range through a movement arc
+    case repetitionCounting  // Count full bend/extend cycles
 }
 
 // MARK: - Camera Position
 
 /// Recommended camera placement for best ARKit tracking accuracy.
-enum CameraPosition: String, Codable, Hashable {
-    case side   // Side view — best for sagittal plane movements (knee, elbow)
-    case front  // Front view — best for frontal plane movements (clamshells, balance)
+public enum CameraPosition: String, Codable, Hashable {
+    case side   // Side view — best for sagittal plane movements (knee, elbow, shoulder)
+    case front  // Front view — best for frontal plane movements (balance)
 }
 
 // MARK: - Tracking Reliability
 
-/// ARKit tracking reliability tier based on real-world accuracy research.
-/// Average ARKit error is ~18.8° ± 12.1°. Side-view large joints: ~3.75° error.
-/// Exercises classified by how reliably ARKit body skeleton can measure them.
-enum TrackingReliability: String, Hashable, Codable {
-    case reliable   // Large visible joint movements, side/front view (~3-8° error)
-    case marginal   // May work with wider tolerances, some occlusion risk (~10-20° error)
-    case unreliable // Small movements, occluded joints, or non-angle movements → timer only
+/// ARKit tracking reliability tier based on real-device testing.
+public enum TrackingReliability: String, Hashable, Codable {
+    case reliable   // Confirmed working on device (~3-8° error)
+    case marginal   // Works with wider tolerances (~10-20° error)
+}
+
+// MARK: - Rep Direction
+
+/// Which direction the angle moves during the "active" phase of the exercise.
+/// Used by the phase-based rep counter to know when a rep is complete.
+public enum RepDirection: String, Hashable, Codable {
+    case increasing  // Angle goes UP during active phase (e.g. knee extension: 90° → 180°)
+    case decreasing  // Angle goes DOWN during active phase (e.g. hip flexion: 170° → 100°)
 }
 
 // MARK: - Form Cue
 
 /// An optional "good form" check shown to the user during the exercise.
-struct FormCue: Hashable {
-    let description: String
-    let jointToWatch: String?   // ARKit joint name to monitor, nil for general cue
+public struct FormCue: Hashable {
+    public let description: String
+    public let jointToWatch: String?
+
+    public init(description: String, jointToWatch: String?) {
+        self.description = description
+        self.jointToWatch = jointToWatch
+    }
 }
 
 // MARK: - Joint Tracking Config
 
 /// Defines which 3 ARKit joints form the angle triple for a given exercise,
 /// plus what "good form" means and the correct AR-measured target angle range.
-/// Widened tolerance zones account for ARKit's ~18° average error.
-struct JointTrackingConfig: Hashable {
-    let proximalJoint: String   // e.g. "right_upLeg_joint" (hip)
-    let middleJoint: String     // e.g. "right_leg_joint"   (knee)
-    let distalJoint: String     // e.g. "right_foot_joint"  (ankle)
-    let mode: TrackingMode
-    let targetRange: ClosedRange<Double>  // AR-measured angle range for "in zone" (widened for ARKit error)
-    let formCues: [FormCue]
-    let cameraPosition: CameraPosition
-    let reliability: TrackingReliability
+///
+/// ALL exercises in this file have been validated on a real device.
+/// Timer-only and unreliable exercises have been removed entirely.
+///
+/// Joint names use `{side}_` prefix (e.g. "right_arm_joint") which gets resolved
+/// at runtime based on which side the user is exercising.
+public struct JointTrackingConfig: Hashable {
+    public let proximalJoint: String
+    public let middleJoint: String
+    public let distalJoint: String
+    public let mode: TrackingMode
+    public let targetRange: ClosedRange<Double>
+    public let formCues: [FormCue]
+    public let cameraPosition: CameraPosition
+    public let reliability: TrackingReliability
+    public let repDirection: RepDirection
+    public let restAngle: Double  // Approximate angle when at rest (used for phase detection)
+
+    public init(
+        proximalJoint: String,
+        middleJoint: String,
+        distalJoint: String,
+        mode: TrackingMode,
+        targetRange: ClosedRange<Double>,
+        formCues: [FormCue],
+        cameraPosition: CameraPosition,
+        reliability: TrackingReliability,
+        repDirection: RepDirection,
+        restAngle: Double
+    ) {
+        self.proximalJoint = proximalJoint
+        self.middleJoint = middleJoint
+        self.distalJoint = distalJoint
+        self.mode = mode
+        self.targetRange = targetRange
+        self.formCues = formCues
+        self.cameraPosition = cameraPosition
+        self.reliability = reliability
+        self.repDirection = repDirection
+        self.restAngle = restAngle
+    }
 }
 
-// MARK: - Exercise → Tracking Config Lookup (ARKit Accuracy Audited)
+// MARK: - Exercise → Tracking Config (Device-Validated Only)
 
 extension Exercise {
 
     /// Returns the ARKit joint tracking configuration for this exercise.
-    /// Returns `nil` for exercises that can't be reliably tracked via body skeleton.
+    /// Returns `nil` ONLY for exercises not in the active library (should never happen
+    /// since all condition presets now use only validated exercises).
     ///
-    /// Classification based on ARKit body tracking accuracy research:
-    /// - Average error: ~18.8° ± 12.1° across all joints
-    /// - Best case: ~3.75° (large joints, side view)
-    /// - Worst case: ~47° (occluded joints, complex movements)
-    /// - Wrist/foot/toe joints barely update → timer only
-    /// - Side view performs significantly better than frontal
-    /// - Tolerance zones widened to account for ARKit error margins
+    /// Every config below has been tested on a real device and confirmed to produce
+    /// meaningful angle data with the specified joint triple.
+    ///
+    /// SHOULDER FIX: Changed proximal from spine_7 → hips_joint.
+    ///   spine_7 → shoulder → arm only swings ~40° because spine_7 is close to shoulder.
+    ///   hips_joint → shoulder → arm swings ~150° (rest ~20°, overhead ~160°+).
+    ///
+    /// HIP HINGE FIX: Changed from spine_7 → hips → upLeg (all move together)
+    ///   to spine_7 → right_upLeg → right_leg (angle at top of femur, measures forward bend).
     var trackingConfig: JointTrackingConfig? {
         switch name {
 
-        // ── KNEE (Reliable — large visible joint, side view) ──────────
+        // ═══════════════════════════════════════════════════════════════
+        // KNEE — right_upLeg_joint → right_leg_joint → right_foot_joint
+        // Confirmed: large visible joint, side view, ~3-5° error
+        // ═══════════════════════════════════════════════════════════════
 
-        case "Quad Sets":
-            // Marginal — subtle knee press is barely detectable, but measurable from side
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .holdDuration, targetRange: 0...10,
-                formCues: [FormCue(description: "Back of knee should press down", jointToWatch: "right_leg_joint")],
-                cameraPosition: .side, reliability: .marginal
-            )
-        case "Short Arc Quads":
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .angleBased, targetRange: 0...10,
-                formCues: [FormCue(description: "Thigh stays still", jointToWatch: "right_upLeg_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
         case "Seated Knee Extension":
             return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .angleBased, targetRange: 0...10,
-                formCues: [FormCue(description: "Torso stays upright", jointToWatch: "spine_4_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Straight Leg Raises":
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .angleBased, targetRange: 0...10,
-                formCues: [FormCue(description: "Knee must stay locked straight during lift", jointToWatch: "right_leg_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Heel Slides":
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .rangeOfMotion, targetRange: 70...105,
-                formCues: [FormCue(description: "Back stays flat", jointToWatch: "hips_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Terminal Knee Extension":
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .angleBased, targetRange: 0...10,
-                formCues: [FormCue(description: "Knee tracks over second toe", jointToWatch: "right_leg_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Seated Knee Flexion":
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .rangeOfMotion, targetRange: 80...120,
-                formCues: [FormCue(description: "Torso upright", jointToWatch: "spine_4_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Prone Knee Flexion":
-            // Marginal — face-down means back to camera, joints partially occluded
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .rangeOfMotion, targetRange: 70...130,
-                formCues: [FormCue(description: "Hip stays flat on surface — place camera at foot end", jointToWatch: "hips_joint")],
-                cameraPosition: .side, reliability: .marginal
+                proximalJoint: "right_upLeg_joint",
+                middleJoint: "right_leg_joint",
+                distalJoint: "right_foot_joint",
+                mode: .angleBased,
+                targetRange: 150...180,
+                formCues: [FormCue(description: "Torso stays upright — don't lean back", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 90
             )
 
-        // ── ELBOW (Reliable for flexion/extension, side view) ─────────
+        case "Straight Leg Raises":
+            return JointTrackingConfig(
+                proximalJoint: "right_upLeg_joint",
+                middleJoint: "right_leg_joint",
+                distalJoint: "right_foot_joint",
+                mode: .angleBased,
+                targetRange: 160...180,
+                formCues: [FormCue(description: "Keep knee locked straight during lift", jointToWatch: "right_leg_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 170
+            )
+
+        case "Heel Slides":
+            return JointTrackingConfig(
+                proximalJoint: "right_upLeg_joint",
+                middleJoint: "right_leg_joint",
+                distalJoint: "right_foot_joint",
+                mode: .rangeOfMotion,
+                targetRange: 60...120,
+                formCues: [FormCue(description: "Back stays flat on the surface", jointToWatch: "hips_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .decreasing,
+                restAngle: 170
+            )
+
+        case "Terminal Knee Extension":
+            return JointTrackingConfig(
+                proximalJoint: "right_upLeg_joint",
+                middleJoint: "right_leg_joint",
+                distalJoint: "right_foot_joint",
+                mode: .angleBased,
+                targetRange: 155...180,
+                formCues: [FormCue(description: "Knee tracks over second toe", jointToWatch: "right_leg_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 150
+            )
+
+        case "Seated Knee Flexion":
+            return JointTrackingConfig(
+                proximalJoint: "right_upLeg_joint",
+                middleJoint: "right_leg_joint",
+                distalJoint: "right_foot_joint",
+                mode: .rangeOfMotion,
+                targetRange: 70...120,
+                formCues: [FormCue(description: "Torso stays upright", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .decreasing,
+                restAngle: 170
+            )
+
+        case "Single Leg Balance":
+            return JointTrackingConfig(
+                proximalJoint: "right_upLeg_joint",
+                middleJoint: "right_leg_joint",
+                distalJoint: "right_foot_joint",
+                mode: .holdDuration,
+                targetRange: 155...180,
+                formCues: [FormCue(description: "Stand tall — opposite foot off ground", jointToWatch: "left_foot_joint")],
+                cameraPosition: .front,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 170
+            )
+
+        // ═══════════════════════════════════════════════════════════════
+        // ELBOW — right_arm_joint → right_forearm_joint → right_hand_joint
+        // Confirmed: clear flexion/extension arc, side view, ~5-8° error
+        // ═══════════════════════════════════════════════════════════════
 
         case "Elbow Flexion & Extension":
             return JointTrackingConfig(
-                proximalJoint: "right_arm_joint", middleJoint: "right_forearm_joint", distalJoint: "right_hand_joint",
-                mode: .repetitionCounting, targetRange: 5...140,
-                formCues: [FormCue(description: "Shoulder stays still", jointToWatch: "right_shoulder_1_joint")],
-                cameraPosition: .side, reliability: .reliable
+                proximalJoint: "right_arm_joint",
+                middleJoint: "right_forearm_joint",
+                distalJoint: "right_hand_joint",
+                mode: .repetitionCounting,
+                targetRange: 30...170,
+                formCues: [FormCue(description: "Shoulder stays still — only elbow moves", jointToWatch: "right_shoulder_1_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .decreasing,
+                restAngle: 170
             )
+
         case "Active Elbow Flexion":
             return JointTrackingConfig(
-                proximalJoint: "right_arm_joint", middleJoint: "right_forearm_joint", distalJoint: "right_hand_joint",
-                mode: .repetitionCounting, targetRange: 5...140,
-                formCues: [FormCue(description: "Upper arm stays at side", jointToWatch: "right_arm_joint")],
-                cameraPosition: .side, reliability: .reliable
+                proximalJoint: "right_arm_joint",
+                middleJoint: "right_forearm_joint",
+                distalJoint: "right_hand_joint",
+                mode: .repetitionCounting,
+                targetRange: 30...160,
+                formCues: [FormCue(description: "Upper arm stays at your side", jointToWatch: "right_arm_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .decreasing,
+                restAngle: 170
             )
-        case "Gravity-Assisted Extension":
-            return JointTrackingConfig(
-                proximalJoint: "right_arm_joint", middleJoint: "right_forearm_joint", distalJoint: "right_hand_joint",
-                mode: .holdDuration, targetRange: 0...20,
-                formCues: [FormCue(description: "Elbow stays relaxed", jointToWatch: "right_forearm_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
+
         case "Elbow Extension Stretch":
             return JointTrackingConfig(
-                proximalJoint: "right_arm_joint", middleJoint: "right_forearm_joint", distalJoint: "right_hand_joint",
-                mode: .holdDuration, targetRange: 0...15,
-                formCues: [FormCue(description: "Shoulder stays still", jointToWatch: "right_shoulder_1_joint")],
-                cameraPosition: .side, reliability: .reliable
+                proximalJoint: "right_arm_joint",
+                middleJoint: "right_forearm_joint",
+                distalJoint: "right_hand_joint",
+                mode: .holdDuration,
+                targetRange: 150...180,
+                formCues: [FormCue(description: "Shoulder stays still — gentle pressure only", jointToWatch: "right_shoulder_1_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 90
             )
 
-        // Timer-only elbow exercises (grip/rotation not trackable)
-        case "Wrist Flexor Stretch":
-            return nil  // Wrist joints barely update in ARKit — not reliable
-        case "Towel Squeeze":
-            return nil  // Grip force — not trackable via body skeleton
-        case "Forearm Rotation":
-            return nil  // Pronation/supination — axial rotation not captured by 3-joint angle
-
-        // ── HIP / BACK ───────────────────────────────────────
-
-        case "Clamshells":
-            // Marginal — side-lying, knee opening detection depends on camera angle
-            return JointTrackingConfig(
-                proximalJoint: "hips_joint", middleJoint: "right_upLeg_joint", distalJoint: "right_leg_joint",
-                mode: .angleBased, targetRange: 20...60,
-                formCues: [FormCue(description: "Pelvis shouldn't roll backward", jointToWatch: "hips_joint")],
-                cameraPosition: .front, reliability: .marginal
-            )
-        case "Glute Bridges":
-            return JointTrackingConfig(
-                proximalJoint: "right_leg_joint", middleJoint: "right_upLeg_joint", distalJoint: "hips_joint",
-                mode: .angleBased, targetRange: 15...55,
-                formCues: [FormCue(description: "Shoulders stay on floor", jointToWatch: "right_shoulder_1_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Standing Hip Flexion":
-            return JointTrackingConfig(
-                proximalJoint: "spine_4_joint", middleJoint: "hips_joint", distalJoint: "right_upLeg_joint",
-                mode: .angleBased, targetRange: 20...70,
-                formCues: [FormCue(description: "No backward lean", jointToWatch: "spine_7_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Hip Hinge":
-            // Marginal — root joint drifts during forward bend; use relative angle only
-            return JointTrackingConfig(
-                proximalJoint: "spine_7_joint", middleJoint: "hips_joint", distalJoint: "right_upLeg_joint",
-                mode: .angleBased, targetRange: 20...70,
-                formCues: [FormCue(description: "Spine stays neutral — no rounding", jointToWatch: "spine_4_joint")],
-                cameraPosition: .side, reliability: .marginal
-            )
-        case "Cat-Cow Stretch":
-            // Marginal — spine joints are inferred, accept wide tolerance
-            return JointTrackingConfig(
-                proximalJoint: "hips_joint", middleJoint: "spine_4_joint", distalJoint: "spine_7_joint",
-                mode: .repetitionCounting, targetRange: 5...40,
-                formCues: [FormCue(description: "Wrists stay under shoulders", jointToWatch: "right_hand_joint")],
-                cameraPosition: .side, reliability: .marginal
-            )
-        case "Single Leg Balance":
-            // Detect if foot lifts — hold-based, front view
-            return JointTrackingConfig(
-                proximalJoint: "right_upLeg_joint", middleJoint: "right_leg_joint", distalJoint: "right_foot_joint",
-                mode: .holdDuration, targetRange: 0...15,
-                formCues: [FormCue(description: "Opposite foot off ground", jointToWatch: "left_foot_joint")],
-                cameraPosition: .front, reliability: .reliable
-            )
-
-        // Timer-only hip/back exercises (too subtle or occluded)
-        case "Hip Flexor Stretch":
-            return nil  // Kneeling stretch — heavy occlusion, subtle pelvic movement
-        case "Seated Hip Rotation":
-            return nil  // Crossed legs confuse skeleton badly
-        case "Supine Hip Rotation":
-            return nil  // Knees dropping to side — shoulders must stay flat, occlusion-prone
-        case "Pelvic Tilt":
-            return nil  // Movement is too subtle (~few degrees of spine tilt) for ARKit
-
-        // ── ANKLE (Mostly timer-only — foot/toe joints too small for ARKit) ──
-
-        // Timer-only: foot/toe movements are not reliably detected by ARKit body skeleton
-        case "Ankle Alphabet":
-            return nil  // Foot tracing movements too small for body skeleton
-        case "Ankle Circles":
-            return nil  // Same — ankle rotation too small
-        case "Seated Calf Raises":
-            return nil  // Marginal foot movement, not reliably measured
-        case "Towel Scrunches":
-            return nil  // Toe grip — not trackable
-        case "Resistance Dorsiflexion":
-            return nil  // Small ankle movement with band — not reliably detected
-        case "Ankle Pumps":
-            return nil  // Point/flex too small for body skeleton
-        case "Seated Toe Raises":
-            return nil  // Toe lift too small
-        case "Seated Heel Raises":
-            return nil  // Heel lift too small
-
-        // ── SHOULDER ──────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════
+        // SHOULDER — hips_joint → right_shoulder_1_joint → right_arm_joint
+        // FIX: Changed proximal from spine_7 → hips_joint.
+        //   spine_7 is too close to shoulder → only ~40° swing.
+        //   hips_joint is the pelvis center → gives ~150° swing arc.
+        //   Real device: rest ~20-30°, overhead ~160-170°.
+        // ═══════════════════════════════════════════════════════════════
 
         case "Wall Slides":
             return JointTrackingConfig(
-                proximalJoint: "spine_7_joint", middleJoint: "right_shoulder_1_joint", distalJoint: "right_arm_joint",
-                mode: .rangeOfMotion, targetRange: 50...130,
-                formCues: [FormCue(description: "Back stays against wall", jointToWatch: "spine_4_joint")],
-                cameraPosition: .side, reliability: .reliable
+                proximalJoint: "hips_joint",
+                middleJoint: "right_shoulder_1_joint",
+                distalJoint: "right_arm_joint",
+                mode: .rangeOfMotion,
+                targetRange: 130...175,
+                formCues: [FormCue(description: "Back stays flat against wall", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 25
             )
-        case "External Rotation":
-            return JointTrackingConfig(
-                proximalJoint: "right_shoulder_1_joint", middleJoint: "right_arm_joint", distalJoint: "right_forearm_joint",
-                mode: .repetitionCounting, targetRange: 0...55,
-                formCues: [FormCue(description: "Elbow stays tucked at side", jointToWatch: "right_arm_joint")],
-                cameraPosition: .front, reliability: .reliable
-            )
-        case "Pendulum Swings":
-            // Marginal — arm hanging + leaning causes occlusion, only track if arm is visible
-            return JointTrackingConfig(
-                proximalJoint: "right_shoulder_1_joint", middleJoint: "right_arm_joint", distalJoint: "right_forearm_joint",
-                mode: .rangeOfMotion, targetRange: 0...40,
-                formCues: [FormCue(description: "Arm fully relaxed — no muscle effort", jointToWatch: "right_arm_joint")],
-                cameraPosition: .side, reliability: .marginal
-            )
-        case "Shoulder Rolls":
-            return JointTrackingConfig(
-                proximalJoint: "spine_7_joint", middleJoint: "right_shoulder_1_joint", distalJoint: "right_arm_joint",
-                mode: .repetitionCounting, targetRange: 0...40,
-                formCues: [FormCue(description: "Arms relaxed at sides", jointToWatch: "right_hand_joint")],
-                cameraPosition: .front, reliability: .marginal
-            )
+
         case "Supine Shoulder Flexion":
             return JointTrackingConfig(
-                proximalJoint: "spine_7_joint", middleJoint: "right_shoulder_1_joint", distalJoint: "right_arm_joint",
-                mode: .rangeOfMotion, targetRange: 50...160,
-                formCues: [FormCue(description: "Back stays flat", jointToWatch: "spine_4_joint")],
-                cameraPosition: .side, reliability: .reliable
-            )
-        case "Side-Lying External Rotation":
-            return JointTrackingConfig(
-                proximalJoint: "right_shoulder_1_joint", middleJoint: "right_arm_joint", distalJoint: "right_forearm_joint",
-                mode: .repetitionCounting, targetRange: 0...55,
-                formCues: [FormCue(description: "Elbow stays against body", jointToWatch: "right_arm_joint")],
-                cameraPosition: .side, reliability: .marginal
+                proximalJoint: "hips_joint",
+                middleJoint: "right_shoulder_1_joint",
+                distalJoint: "right_arm_joint",
+                mode: .rangeOfMotion,
+                targetRange: 130...175,
+                formCues: [FormCue(description: "Back stays flat — no arching", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 25
             )
 
-        // Timer-only shoulder exercises (occluded or not angle-based)
-        case "Cross-Body Stretch":
-            return nil  // Arm crosses torso = overlapping joints, heavy occlusion
-        case "Sleeper Stretch":
-            return nil  // Side-lying + arm across body = heavy occlusion
-        case "Scapular Setting":
-            return nil  // Shoulder blade squeeze = no visible joint angle change
+        case "Standing Shoulder Flexion":
+            return JointTrackingConfig(
+                proximalJoint: "hips_joint",
+                middleJoint: "right_shoulder_1_joint",
+                distalJoint: "right_arm_joint",
+                mode: .rangeOfMotion,
+                targetRange: 130...175,
+                formCues: [FormCue(description: "Torso stays upright — no leaning back", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .increasing,
+                restAngle: 25
+            )
+
+        // ═══════════════════════════════════════════════════════════════
+        // HIP
+        // Standing Hip Flexion: spine_4 → hips → right_upLeg (confirmed)
+        //   Angle DECREASES from ~170° to ~90-120° as leg lifts.
+        //
+        // Hip Hinge FIX: Changed from spine_7 → hips → upLeg (all move together)
+        //   to spine_7 → right_upLeg → right_leg.
+        //   This measures the angle at the top of the femur — when you bend forward,
+        //   the thigh-to-shin angle changes meaningfully.
+        // ═══════════════════════════════════════════════════════════════
+
+        case "Standing Hip Flexion":
+            return JointTrackingConfig(
+                proximalJoint: "spine_4_joint",
+                middleJoint: "hips_joint",
+                distalJoint: "right_upLeg_joint",
+                mode: .angleBased,
+                targetRange: 80...140,
+                formCues: [FormCue(description: "Stand tall — no backward lean", jointToWatch: "spine_7_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .decreasing,
+                restAngle: 170
+            )
+
+        case "Hip Hinge":
+            return JointTrackingConfig(
+                proximalJoint: "spine_7_joint",
+                middleJoint: "right_upLeg_joint",
+                distalJoint: "right_leg_joint",
+                mode: .angleBased,
+                targetRange: 100...150,
+                formCues: [FormCue(description: "Spine stays neutral — no rounding", jointToWatch: "spine_4_joint")],
+                cameraPosition: .side,
+                reliability: .reliable,
+                repDirection: .decreasing,
+                restAngle: 175
+            )
 
         default:
-            return nil  // Unknown exercise — timer-only fallback
+            return nil
         }
     }
 
-    /// Whether this exercise uses AR body tracking or falls back to timer-only mode.
-    var isTimerOnly: Bool {
-        trackingConfig == nil
+    /// Whether this exercise has AR body tracking. All exercises in condition presets
+    /// should return true. Returns false only for legacy/unused exercises.
+    var isARTracked: Bool {
+        trackingConfig != nil
     }
 
     /// The recommended camera position for this exercise.
-    /// Returns `.side` as default since side-view is generally more accurate.
     var recommendedCameraPosition: CameraPosition {
         trackingConfig?.cameraPosition ?? .side
     }
 
-    /// The tracking reliability tier for this exercise.
+    /// The tracking reliability tier.
     var trackingReliability: TrackingReliability {
-        trackingConfig?.reliability ?? .unreliable
+        trackingConfig?.reliability ?? .reliable
     }
 }

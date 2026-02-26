@@ -54,13 +54,13 @@ struct BundledImage: View {
         if let img = loadImage() {
             Image(uiImage: img)
                 .resizable()
-                .scaledToFit()
+                .aspectRatio(contentMode: .fit)
                 .frame(maxHeight: maxHeight)
         } else {
             // Fallback placeholder so something is visible during debugging
             Image(systemName: "figure.stand")
                 .resizable()
-                .scaledToFit()
+                .aspectRatio(contentMode: .fit)
                 .frame(maxHeight: maxHeight)
                 .foregroundColor(PPColor.actionBlue.opacity(0.15))
                 .onAppear {

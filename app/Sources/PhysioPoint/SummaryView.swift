@@ -20,6 +20,8 @@ enum SessionFeeling: String, CaseIterable {
 
 struct SummaryView: View {
     @EnvironmentObject var appState: PhysioPointState
+    @EnvironmentObject var storage: StorageService
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedFeeling: SessionFeeling? = nil
     @State private var animateCheckmark = false
     @State private var animateCards = false
@@ -53,6 +55,8 @@ struct SummaryView: View {
                         repConsistencyCard
                         vsLastSessionCard
                         bottomRow
+                        feelingResponseCard
+                        streakAndNextSection
                         disclaimerText
                     }
                     .padding(.horizontal, 20)
@@ -63,8 +67,16 @@ struct SummaryView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle("")
         .onAppear {
+            // Mark the active schedule slot as complete
+            if let slotID = appState.activeSlotID {
+                storage.markSlotComplete(slotID)
+            }
+            // Persist session metrics
+            storage.saveSessionMetrics(metrics)
+
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
                 animateCheckmark = true
             }
@@ -96,9 +108,11 @@ struct SummaryView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
 
-            Text("Great effort. Here's how you did.")
+            Text(praiseMessage)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
         }
     }
 
@@ -107,7 +121,7 @@ struct SummaryView: View {
     private var statsCard: some View {
         HStack(spacing: 0) {
             // Reps completed ring
-            statItem {
+            statItem(label: "Reps\nCompleted") {
                 ZStack {
                     Circle()
                         .stroke(PPColor.actionBlue.opacity(0.15), lineWidth: 5)
@@ -121,12 +135,12 @@ struct SummaryView: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(PPColor.actionBlue)
                 }
-            } label: "Reps\nCompleted"
+            }
 
             thinDivider
 
             // Best bend
-            statItem {
+            statItem(label: "Best Bend") {
                 VStack(spacing: 2) {
                     HStack(alignment: .top, spacing: 1) {
                         Image(systemName: "angle")
@@ -139,12 +153,12 @@ struct SummaryView: View {
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-            } label: "Best Bend"
+            }
 
             thinDivider
 
             // Time in good form
-            statItem {
+            statItem(label: "Time in\nGood Form") {
                 VStack(spacing: 2) {
                     HStack(alignment: .top, spacing: 1) {
                         Image(systemName: "timer")
@@ -154,10 +168,10 @@ struct SummaryView: View {
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                     }
                 }
-            } label: "Time in\nGood Form"
+            }
         }
         .padding(.vertical, 16)
-        .background(glassCard)
+        .physioGlass(.card)
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
     }
@@ -169,15 +183,15 @@ struct SummaryView: View {
             Text("Rep Consistency")
                 .font(.headline)
 
-            HStack(spacing: 10) {
+            let columns = [GridItem(.adaptive(minimum: 90), spacing: 8)]
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                 ForEach(metrics.repResults) { rep in
                     repChip(rep)
                 }
-                Spacer()
             }
         }
         .padding(16)
-        .background(glassCard)
+        .physioGlass(.card)
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
     }
@@ -220,7 +234,7 @@ struct SummaryView: View {
                     }
                 }
                 .padding(16)
-                .background(glassCard)
+                .physioGlass(.card)
                 .opacity(animateCards ? 1 : 0)
                 .offset(y: animateCards ? 0 : 20)
             }
@@ -248,7 +262,7 @@ struct SummaryView: View {
 
     private var bottomRow: some View {
         HStack(spacing: 12) {
-            // Today's Plan progress ring
+            // Today's Plan progress ring — reads live from storage
             VStack(spacing: 10) {
                 Text("Today's Plan")
                     .font(.system(size: 14, weight: .semibold))
@@ -258,22 +272,29 @@ struct SummaryView: View {
                         .stroke(PPColor.actionBlue.opacity(0.12), lineWidth: 6)
                         .frame(width: 64, height: 64)
                     Circle()
-                        .trim(from: 0, to: metrics.todayTotal > 0 ? CGFloat(metrics.todayCompleted) / CGFloat(metrics.todayTotal) : 0)
-                        .stroke(PPGradient.action, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .trim(from: 0, to: planTotal > 0 ? CGFloat(planCompleted) / CGFloat(planTotal) : 0)
+                        .stroke(PPColor.vitalityTeal, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .frame(width: 64, height: 64)
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
-                        Text("\(metrics.todayCompleted) of \(metrics.todayTotal)")
+                        Text("\(planCompleted) of \(planTotal)")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                         Text("done")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
                 }
+
+                // All done banner
+                if planCompleted == planTotal {
+                    Text("All done! 🎉")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(PPColor.vitalityTeal)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(glassCard)
+            .physioGlass(.card)
 
             // How did it feel?
             VStack(spacing: 10) {
@@ -285,6 +306,7 @@ struct SummaryView: View {
                         Button {
                             withAnimation(.spring(response: 0.3)) {
                                 selectedFeeling = feeling
+                                storage.lastFeeling = feeling.rawValue
                             }
                         } label: {
                             HStack(spacing: 6) {
@@ -316,7 +338,71 @@ struct SummaryView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .padding(.horizontal, 8)
-            .background(glassCard)
+            .physioGlass(.card)
+        }
+        .opacity(animateCards ? 1 : 0)
+        .offset(y: animateCards ? 0 : 20)
+    }
+
+    // MARK: - Feeling Response Card
+
+    private var feelingResponseCard: some View {
+        Group {
+            if let feeling = selectedFeeling, !feelingResponse(feeling).isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "quote.opening")
+                        .font(.title3)
+                        .foregroundColor(PPColor.vitalityTeal)
+                    Text(feelingResponse(feeling))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineSpacing(4)
+                }
+                .padding(16)
+                .physioGlass(.card)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .animation(.easeInOut, value: selectedFeeling)
+            }
+        }
+    }
+
+    // MARK: - Streak & What's Next
+
+    private var streakAndNextSection: some View {
+        VStack(spacing: 12) {
+            // Streak badge
+            if storage.currentStreak >= 2 {
+                Label("\(storage.currentStreak)-day streak 🔥", systemImage: "flame.fill")
+                    .foregroundColor(.orange)
+                    .font(.subheadline.bold())
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .physioGlass(.pill)
+            }
+
+            // What's next
+            if let nextSlot = storage.nextIncompleteSlot() {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "arrow.forward.circle.fill")
+                            .foregroundColor(PPColor.actionBlue)
+                        Text("Up Next")
+                            .font(.headline)
+                    }
+
+                    Text("\(nextSlot.exerciseName) · \(nextSlot.label)")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.primary)
+
+                    Text("\(nextSlot.exerciseReps) reps × \(nextSlot.exerciseSets) sets")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(PPColor.actionBlue.opacity(0.08))
+                .cornerRadius(14)
+            }
         }
         .opacity(animateCards ? 1 : 0)
         .offset(y: animateCards ? 0 : 20)
@@ -332,21 +418,78 @@ struct SummaryView: View {
             .padding(.horizontal, 8)
     }
 
+    // MARK: - Coaching Logic
+
+    private var praiseMessage: String {
+        let exercise = appState.selectedExercise
+        let hitRange = exercise.map {
+            metrics.bestAngle >= $0.targetAngleRange.lowerBound
+        } ?? true
+        let hitReps = metrics.repsCompleted >= metrics.targetReps && metrics.targetReps > 0
+
+        switch (hitRange, hitReps) {
+        case (true, true):
+            return "You nailed it — full range and all your reps. 🎯"
+        case (true, false):
+            return "Great range of motion today! Try pushing for more reps next time."
+        case (false, true):
+            return "All reps done! Work on bending a little deeper each time."
+        default:
+            return "Every session counts. You showed up — that's what matters. 💪"
+        }
+    }
+
+    private func feelingResponse(_ feeling: SessionFeeling) -> String {
+        switch feeling {
+        case .easier:
+            return "That's a great sign — your body is adapting. We'll gradually increase range next session."
+        case .same:
+            return "Steady progress. Consistency is the most important thing right now."
+        case .harder:
+            return "That's okay — some days are tougher. Make sure you've rested and had water."
+        }
+    }
+
     // MARK: - Done Button
 
     private var doneButton: some View {
-        Button {
-            appState.navigationPath.removeLast(appState.navigationPath.count)
-        } label: {
-            Text("Done")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(PPGradient.action)
-                .cornerRadius(18)
-                .shadow(color: PPColor.vitalityTeal.opacity(0.25), radius: 10, y: 4)
+        VStack(spacing: 12) {
+            // Redo this session button
+            if appState.activeSlotID != nil {
+                Button {
+                    if let slotID = appState.activeSlotID {
+                        storage.unmarkSlotComplete(slotID)
+                    }
+                    appState.navigationPath.removeLast() // back to AR/session
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Redo this session")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                }
+            }
+
+            Button {
+                appState.activeSlotID = nil
+                appState.navigationPath.removeLast(appState.navigationPath.count)
+                // Signal Assistive root to pop to home, then dismiss cover
+                NotificationCenter.default.post(name: .assistiveReturnHome, object: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    dismiss()
+                }
+            } label: {
+                Text("Done")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(PPGradient.action)
+                    .cornerRadius(18)
+                    .shadow(color: PPColor.vitalityTeal.opacity(0.25), radius: 10, y: 4)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 24)
@@ -357,9 +500,19 @@ struct SummaryView: View {
         )
     }
 
+    // MARK: - Plan Progress Computed (consolidated across all plans)
+
+    private var planCompleted: Int {
+        storage.completedSlotCount
+    }
+
+    private var planTotal: Int {
+        max(storage.totalSlotCount, 1)
+    }
+
     // MARK: - Helpers
 
-    private func statItem<Content: View>(@ViewBuilder icon: () -> Content, label: String) -> some View {
+    private func statItem<Content: View>(label: String, @ViewBuilder icon: () -> Content) -> some View {
         VStack(spacing: 8) {
             icon()
             Text(label)
@@ -378,13 +531,5 @@ struct SummaryView: View {
             .frame(width: 1, height: 60)
     }
 
-    private var glassCard: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(PPColor.actionBlue.opacity(0.08), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-    }
+
 }

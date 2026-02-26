@@ -23,21 +23,59 @@ struct SessionIntroView: View {
                     }
                     .padding(.top)
                     
+                    // Tracking mode badge — all exercises are now AR-tracked
+                    if exercise.trackingConfig != nil {
+                        HStack(spacing: 6) {
+                            Image(systemName: "camera.fill")
+                                .font(.caption2)
+                            Text("Camera tracks your movement automatically")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.12))
+                        .cornerRadius(8)
+                        .accessibilityLabel("Your movement will be tracked by the camera")
+                    } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: "timer")
+                                .font(.system(size: 13))
+                            Text("Timer-Guided")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("• Follow the steps below")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(10)
+                    }
+                    
                     Text(exercise.visualDescription)
                         .font(.body)
                         .multilineTextAlignment(.center)
                         .foregroundColor(.secondary)
                         .padding(.horizontal)
                     
+                    // Exercise guide image
+                    if let guideImage = exercise.guideImageName {
+                        BundledImage(guideImage, maxHeight: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
+                            .padding(.horizontal)
+                    }
+                    
                     // Quick stats
                     HStack(spacing: 24) {
-                        statBadge(icon: "target", label: "\(Int(exercise.targetAngleRange.lowerBound))°–\(Int(exercise.targetAngleRange.upperBound))°", subtitle: "Target")
+                        statBadge(icon: "checkmark.circle", label: plainAngleLabel(exercise), subtitle: "Goal")
                         statBadge(icon: "timer", label: "\(exercise.holdSeconds)s", subtitle: "Hold")
-                        statBadge(icon: "repeat", label: "\(exercise.reps)", subtitle: "Reps")
+                        statBadge(icon: "repeat", label: "\(exercise.reps) times", subtitle: "Repeat")
                     }
                     .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(16)
+                    .physioGlass(.card)
                     .padding(.horizontal)
                     
                     // Step-by-step guide
@@ -81,6 +119,23 @@ struct SessionIntroView: View {
                         .padding(.horizontal)
                     }
                     
+                    // Camera position hint
+                    if let config = exercise.trackingConfig {
+                        HStack(spacing: 8) {
+                            Image(systemName: config.cameraPosition == .side ? "ipad.landscape" : "ipad")
+                                .font(.system(size: 14))
+                            Text("Best camera position: \(config.cameraPosition == .side ? "Side view" : "Front view")")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue.opacity(0.06))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+                    
                     // Begin button
                     Button {
                         appState.navigationPath.append("ExerciseAR")
@@ -99,6 +154,19 @@ struct SessionIntroView: View {
                     }
                     .padding(.horizontal)
                     .padding(.top, 8)
+
+                    // Need help button
+                    Button {
+                        // Trigger the chat overlay
+                        NotificationCenter.default.post(name: NSNotification.Name("OpenPhysioChat"), object: nil)
+                    } label: {
+                        Label("Need help with this exercise?", systemImage: "questionmark.circle")
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                            .frame(minHeight: 44)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 4)
                     
                     Text("For educational demo only. Not medical advice.")
                         .font(.caption2)
@@ -113,6 +181,7 @@ struct SessionIntroView: View {
         }
         .navigationTitle("Exercise Guide")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
     
     // MARK: - Components
@@ -160,8 +229,30 @@ struct SessionIntroView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .physioGlass(.card)
         .padding(.horizontal)
+    }
+    
+    private func trackingModeLabel(_ mode: TrackingMode) -> String {
+        switch mode {
+        case .angleBased:          return "Movement tracking"
+        case .holdDuration:        return "Hold timing"
+        case .rangeOfMotion:       return "Movement range"
+        case .repetitionCounting:  return "Counting reps"
+        }
+    }
+
+    /// Convert clinical angle ranges to plain language
+    private func plainAngleLabel(_ exercise: Exercise) -> String {
+        let upper = exercise.targetAngleRange.upperBound
+        if upper >= 170 {
+            return "Straighten fully"
+        } else if upper >= 140 {
+            return "Raise up high"
+        } else if upper >= 100 {
+            return "Bend halfway"
+        } else {
+            return "Gentle bend"
+        }
     }
 }

@@ -7,7 +7,6 @@ struct AssistiveExerciseView: View {
     let exercise: Exercise
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
-    @EnvironmentObject var settings: PhysioPointSettings
     @State private var showAR = false
 
     var body: some View {
@@ -137,7 +136,6 @@ struct AssistiveExerciseView: View {
             }
             .environmentObject(appState)
             .environmentObject(storage)
-            .environmentObject(settings)
         }
     }
 }

@@ -29,25 +29,25 @@ public enum AngleMath {
         return degrees
     }
 
-    /// Backward-compatible alias for knee-specific callers.
-    public static func computeKneeFlexionAngle(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> Double {
+    // MARK: - Named Convenience Wrappers
+    
+    /// Knee flexion angle (hip → knee → ankle)
+    static func kneeFlexion(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) -> Double {
         computeJointAngle(proximal: hip, joint: knee, distal: ankle)
     }
-
-    // MARK: - Named Helpers (readability + debugging)
-
-    /// Elbow flexion angle: shoulder → elbow → wrist
-    public static func elbowFlexion(shoulder: SIMD3<Float>, elbow: SIMD3<Float>, wrist: SIMD3<Float>) -> Double {
+    
+    /// Elbow flexion angle (shoulder → elbow → wrist)
+    static func elbowFlexion(shoulder: SIMD3<Float>, elbow: SIMD3<Float>, wrist: SIMD3<Float>) -> Double {
         computeJointAngle(proximal: shoulder, joint: elbow, distal: wrist)
     }
-
-    /// Shoulder angle: torso → shoulder → elbow
-    public static func shoulderAngle(torso: SIMD3<Float>, shoulder: SIMD3<Float>, elbow: SIMD3<Float>) -> Double {
+    
+    /// Shoulder angle (torso → shoulder → elbow)
+    static func shoulderAngle(torso: SIMD3<Float>, shoulder: SIMD3<Float>, elbow: SIMD3<Float>) -> Double {
         computeJointAngle(proximal: torso, joint: shoulder, distal: elbow)
     }
-
-    /// Hip angle: spine → hip → thigh
-    public static func hipAngle(spine: SIMD3<Float>, hip: SIMD3<Float>, thigh: SIMD3<Float>) -> Double {
+    
+    /// Hip angle (spine → hip → thigh)
+    static func hipAngle(spine: SIMD3<Float>, hip: SIMD3<Float>, thigh: SIMD3<Float>) -> Double {
         computeJointAngle(proximal: spine, joint: hip, distal: thigh)
     }
 }

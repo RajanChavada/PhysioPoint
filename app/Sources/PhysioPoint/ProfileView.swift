@@ -65,10 +65,6 @@ struct ProfileView: View {
                             AssistiveAccessToggleRow()
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                            Divider().padding(.leading, 52)
-                            BetaRepCountingToggleRow()
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
                         }
                         .physioGlass(.card)
 
