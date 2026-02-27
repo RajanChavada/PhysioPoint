@@ -299,12 +299,30 @@ struct HomeView: View {
                         }
 
                         // Active plan cards
-                        ForEach(storage.dailyPlans) { plan in
-                            activePlanCard(plan: plan)
+                        if !storage.dailyPlans.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Active Plans")
+                                    .font(.headline)
+                                    .padding(.leading, 4)
+
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(storage.dailyPlans) { plan in
+                                            activePlanCard(plan: plan)
+                                                .frame(width: 280)
+                                        }
+                                    }
+                                    .padding(.horizontal, 4)
+                                    .padding(.bottom, 8)
+                                }
+                            }
                         }
 
                         // Start new session
                         startSessionCard
+                        
+                        // Helpful positive advice
+                        InsightCarousel()
 
                         // Recovery pulse (shown after first completed session)
                         if storage.sessionCount > 0 || storage.lastFeeling != nil {
@@ -363,25 +381,31 @@ struct HomeView: View {
                 todayProgressPill
             }
 
-            // Slots grouped by plan
-            ForEach(storage.dailyPlans) { plan in
-                todayPlanGroup(plan: plan)
-            }
+            // Scrollable list of slots grouped by plan
+            ScrollView(showsIndicators: true) {
+                VStack(spacing: 12) {
+                    ForEach(storage.dailyPlans) { plan in
+                        todayPlanGroup(plan: plan)
+                    }
 
-            // All done banner
-            if storage.completedSlotCount == storage.totalSlotCount {
-                HStack(spacing: 6) {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(PPColor.vitalityTeal)
-                    Text("All sessions complete today!")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(PPColor.vitalityTeal)
+                    // All done banner
+                    if storage.completedSlotCount == storage.totalSlotCount && storage.totalSlotCount > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "star.fill")
+                                .foregroundColor(PPColor.vitalityTeal)
+                            Text("All sessions complete today!")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(PPColor.vitalityTeal)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(PPColor.vitalityTeal.opacity(0.08))
+                        .cornerRadius(12)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(PPColor.vitalityTeal.opacity(0.08))
-                .cornerRadius(12)
+                .padding(.trailing, 4) // Make room for scroll indicator
             }
+            .frame(maxHeight: 280) // Constrain scroll height
         }
         .padding(18)
         .background(Color.white)
@@ -548,55 +572,97 @@ struct HomeView: View {
     // MARK: - Active Plan Card (per saved plan)
 
     private func activePlanCard(plan: DailyPlan) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Active Plan", systemImage: "play.circle.fill")
-                    .font(.subheadline.bold())
-                    .foregroundColor(PPColor.vitalityTeal)
+        let area = BodyArea(rawValue: plan.bodyArea) ?? .knee
+        let completed = plan.slots.filter(\.isCompleted).count
+        let total = plan.slots.count
+        let nextSlot = plan.slots.first(where: { !$0.isCompleted })
+        
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                // Icon + Progress Ring
+                ZStack {
+                    Circle()
+                        .stroke(area.tintColor.opacity(0.15), lineWidth: 4)
+                        .frame(width: 48, height: 48)
+                    Circle()
+                        .trim(from: 0, to: total > 0 ? CGFloat(completed) / CGFloat(total) : 0)
+                        .stroke(area.tintColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .frame(width: 48, height: 48)
+                        .rotationEffect(.degrees(-90))
+                    
+                    Image(systemName: area.systemImage)
+                        .font(.system(size: 20))
+                        .foregroundColor(area.tintColor)
+                }
+                
                 Spacer()
+                
+                Button {
+                    setConditionFromPlan(plan)
+                    appState.navigationPath.append("Schedule")
+                } label: {
+                    Image(systemName: "list.clipboard.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(area.tintColor)
+                        .clipShape(Circle())
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(plan.bodyArea.capitalized)
                     .font(.caption.bold())
-                    .foregroundColor(PPColor.actionBlue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(PPColor.actionBlue.opacity(0.1))
-                    .cornerRadius(8)
-            }
-
-            Text(plan.conditionName)
-                .font(.title3.bold())
-
-            HStack(spacing: 12) {
-                Text("\(plan.slots.filter(\.isCompleted).count)/\(plan.slots.count) sessions")
-                    .font(.caption)
                     .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                
+                Text(plan.conditionName)
+                    .font(.title3.bold())
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
             }
+            
+            Divider()
 
-            Button {
-                setConditionFromPlan(plan)
-                appState.navigationPath.append("Schedule")
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.right.circle.fill")
-                    Text("View Schedule")
-                        .fontWeight(.semibold)
+            HStack {
+                if let next = nextSlot {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock.fill")
+                            .foregroundColor(.orange)
+                        Text("Next: \(homeFormattedHour(next.scheduledHour))")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.orange)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(PPColor.vitalityTeal)
+                        Text("All done today!")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(PPColor.vitalityTeal)
+                    }
                 }
-                .font(.subheadline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .foregroundColor(.white)
-                .background(PPGradient.action)
-                .cornerRadius(14)
+                
+                Spacer()
+                
+                Text("\(completed)/\(total) Done")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
             }
         }
         .padding(18)
         .background(Color.white)
-        .cornerRadius(20)
+        .cornerRadius(24)
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(PPColor.actionBlue.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color.black.opacity(0.04), lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
     }
+
+    // MARK: - Helpful Blurb
+    
+    // (Removed static helpfulBlurbCard to use InsightCarousel)
 
     // MARK: - Start Session Card
 
@@ -609,7 +675,7 @@ struct HomeView: View {
                     Circle()
                         .fill(PPGradient.action)
                         .frame(width: 64, height: 64)
-                        .shadow(color: PPColor.vitalityTeal.opacity(0.3), radius: 12, y: 4)
+                        .shadow(color: PPColor.actionBlue.opacity(0.4), radius: 12, y: 4)
 
                     Image(systemName: "plus")
                         .font(.title2.bold())
@@ -619,7 +685,7 @@ struct HomeView: View {
                 VStack(spacing: 4) {
                     Text("New Session")
                         .font(.title3.bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(PPColor.actionBlue)
                     Text("Select the area that needs rehab and get a tailored plan")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -629,11 +695,11 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
             .padding(.horizontal, 16)
-            .background(Color.white)
+            .background(PPColor.actionBlue.opacity(0.05))
             .cornerRadius(20)
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
-                    .stroke(PPColor.actionBlue.opacity(0.1), lineWidth: 1)
+                    .stroke(PPColor.actionBlue.opacity(0.2), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

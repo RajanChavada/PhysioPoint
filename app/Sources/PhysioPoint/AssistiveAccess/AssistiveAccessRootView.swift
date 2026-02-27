@@ -20,6 +20,30 @@ struct AssistiveAccessRootView: View {
                             .listRowBackground(Color.clear)
                     }
                 }
+                
+                // Helpful Tip Blurb (Dynamic)
+                if let card = InsightLibrary.selectCards(storage: storage).first {
+                    Section {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: card.icon)
+                                .font(.system(size: 24))
+                                .foregroundColor(card.category.tint)
+                                .padding(.top, 2)
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(card.headline)
+                                    .font(.title3.bold())
+                                    .foregroundColor(.primary)
+                                Text(card.body)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(card.headline). \(card.body)")
+                    }
+                }
 
                 NavigationLink(destination: AssistiveBodyPickerView()) {
                     AssistiveMenuRow(

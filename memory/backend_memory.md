@@ -23,6 +23,9 @@
    - `markSlotComplete(_:)` / `unmarkSlotComplete(_:)` — iterate all plans to find slot.
    - `saveSessionMetrics(_:)` — persists last 10 sessions.
    - Backward-compat: `dailyPlan` computed property → `.first`, `saveDailyPlan()` → `addPlan()`.
+   - **Body Region Support**: Implemented `BodyRegion` enum to map conditions to specific SF Symbols and colors.
+   - **Horizontal Plan Support**: Designed UI state to support fetching the entire array of `DailyPlan` to build horizontal snappable carousel summaries.
+   - **Collapsible Schedule Support**: Refactored `ScheduleView` logic to identify and group slots by plan ID to enable `DisclosureGroup` expansion.
 4. `ScheduleService.swift` — thin delegate to StorageService (legacy, not used by any view).
 5. Core RehabEngine math and AR view tracking in `ExerciseARView`.
 6. `ConditionModel.swift` — 15 conditions across 5 body areas × 3 categories with `ConditionCategory` enum and `conditions(for:)` filter. **All recommended exercises are now AR-trackable** — timer-only exercises (grip, rotation, ankle foot/toe, occluded stretches) removed from condition presets and replaced with trackable alternatives.

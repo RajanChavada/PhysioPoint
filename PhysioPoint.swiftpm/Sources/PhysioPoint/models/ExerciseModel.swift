@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Body Area
 
@@ -21,6 +22,16 @@ enum BodyArea: String, CaseIterable, Identifiable, Codable, Hashable {
         case .hip:      return "figure.walk"
         case .knee:     return "figure.run"
         case .ankle:    return "figure.step.training"
+        }
+    }
+    
+    var tintColor: Color {
+        switch self {
+        case .knee:     return PPColor.vitalityTeal
+        case .shoulder: return PPColor.actionBlue
+        case .elbow:    return PPColor.actionBlue
+        case .ankle:    return PPColor.vitalityTeal
+        case .hip:      return PPColor.recoveryIndigo
         }
     }
 }

@@ -499,3 +499,210 @@ Hit full range + held form	"You reached your full target range AND held good for
 Good form held but short of range	"You held steady in the target zone — that controlled hold time builds real strength."	"You were 18° short of full extension — try holding at max for 2 extra seconds."	"Consistent sessions drive tissue healing. You're on the right track."
 Back compensation detected	"Over half your session was in good form."	"Your back shifted — focus on keeping your spine still while the knee does the work."	"Even imperfect efforts help maintain circulation and prevent stiffness."
 Rough/jittery movement	"You showed up and did the work."	"Try slowing the movement down — smoother reps build more tissue strength."	"Every session reintroduces safe load to the joint."
+
+
+-- 
+
+## Feature updat - change the AR view 
+## 2. Smart Feedback Header (.ultraThinMaterial)
+Replace scattered floating text with a grounded pill-shaped header.
+​
+
+```swift
+struct SmartFeedbackHeader: View {
+    let feedbackMessage: String
+    let isBodyDetected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Body detection status
+            Image(systemName: isBodyDetected ? "figure.walk.motion" : "figure.stand")
+                .foregroundStyle(isBodyDetected ? .green : .secondary)
+                .symbolEffect(.pulse, isActive: isBodyDetected)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feedbackMessage)
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8) // Dynamic Type safety
+            }
+
+            Spacer()
+
+            // Tracking quality indicator
+            Image(systemName: "waveform.path.ecg")
+                .foregroundStyle(isBodyDetected ? .green : .orange)
+                .font(.title3)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .padding(.horizontal, 16)
+    }
+}
+```
+## 3. Animated Angle Display with numericText
+The angle display should roll like a slot machine instead of flickering.
+
+```swift
+struct AngleDisplay: View {
+    let angle: Double
+    @State private var inTargetZone: Bool = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: "angle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text("\(Int(angle))°")
+                .font(.system(.largeTitle, design: .rounded).bold())
+                .contentTransition(.numericText(value: angle)) // ← smooth roll animation
+                .animation(.spring(duration: 0.3), value: angle)
+                .foregroundStyle(inTargetZone ? .green : .orange)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .scaleEffect(inTargetZone ? 1.05 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: inTargetZone)
+        .sensoryFeedback(.impact(weight: .heavy), trigger: inTargetZone) // haptic on target
+        .onChange(of: angle) { _, newVal in
+            inTargetZone = newVal >= targetMinAngle && newVal <= targetMaxAngle
+        }
+    }
+}
+```
+## 4. Circular Rep Counter
+Replace the raw number with a filling ring.
+```
+swift
+struct RepProgressRing: View {
+    let current: Int
+    let target: Int
+
+    private var progress: Double { Double(current) / Double(target) }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(.white.opacity(0.2), lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeInOut(duration: 0.4), value: progress)
+            VStack(spacing: 0) {
+                Text("\(current)")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .contentTransition(.numericText())
+                    .animation(.default, value: current)
+                Text("/ \(target)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 72, height: 72)
+        .sensoryFeedback(.success, trigger: current == target)
+    }
+}
+```
+## 5. Instruction Cue Pill (SF Symbol + Text)
+Replace the plain "Best results: place camera..." text with a dual-icon instructional pill:
+​
+
+```swift
+struct InstructionCuePill: View {
+    let symbol: String
+    let message: String
+    var symbolColor: Color = .orange
+
+    var body: some View {
+        Label(message, systemImage: symbol)
+            .font(.system(.footnote, design: .rounded).bold())
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .labelStyle(.titleAndIcon)
+    }
+}
+
+// Usage:
+InstructionCuePill(symbol: "lightbulb.fill",
+                   message: "Keep elbow against wall",
+                   symbolColor: .orange)
+
+InstructionCuePill(symbol: "arrow.up.and.down.and.sparkles",
+                   message: "Move until body is centered",
+                   symbolColor: .blue)
+```
+## 6. Fixed "Finish" Button
+Full-width capsule, properly un-mirrored, with haptic confirmation:
+​
+
+```swift
+struct FinishButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Finish Session", systemImage: "checkmark.circle.fill")
+                .font(.system(.body, design: .rounded).bold())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .clipShape(Capsule())
+        .padding(.horizontal, 24)
+        .sensoryFeedback(.success, trigger: false) // fires on tap
+    }
+}
+```
+## 7. Master Overlay Composition
+Wire everything into your main AR overlay ZStack:
+
+```swift
+struct PhysioOverlayView: View {
+    @ObservedObject var viewModel: PhysioViewModel
+
+    var body: some View {
+        VStack {
+            // TOP: Feedback header
+            SmartFeedbackHeader(
+                feedbackMessage: viewModel.feedbackMessage,
+                isBodyDetected: viewModel.isBodyDetected
+            )
+            .padding(.top, 52) // safe area
+
+            Spacer()
+
+            // MID-FLOAT: Angle + Ring side by side
+            HStack {
+                AngleDisplay(angle: viewModel.currentAngle)
+                Spacer()
+                RepProgressRing(current: viewModel.repCount, target: viewModel.targetReps)
+                    .padding(.trailing, 16)
+            }
+            .padding(.horizontal, 16)
+
+            // INSTRUCTION CUES
+            VStack(spacing: 8) {
+                ForEach(viewModel.activeCues, id: \.self) { cue in
+                    InstructionCuePill(symbol: cue.symbol, message: cue.message)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(duration: 0.35), value: viewModel.activeCues)
+            .padding(.bottom, 12)
+
+            // BOTTOM: Finish button
+            FinishButton { viewModel.endSession() }
+                .padding(.bottom, 32)
+        }
+    }
+}
+```

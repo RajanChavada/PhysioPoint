@@ -34,10 +34,25 @@
   - Added **`BodyArea.elbow`** case + elbow exercises and condition.
   - **ScheduleView** — dual-mode: setup mode (time pickers + save) and saved plan mode (slot cards with Start/Redo buttons, progress ring, all-done banner). Sets `appState.activeSlotID` on slot start. **Editable times on saved plans** via Menu picker that calls `storage.updateSlotHour()`. Shows consolidated progress ring across all active plans. Condition badge header.
   - **SummaryView** — marks slot complete via `storage.markSlotComplete()` on `.onAppear`, saves metrics to StorageService, reads live plan progress ring from consolidated `storage.completedSlotCount`/`storage.totalSlotCount`, shows "Redo" button that unmarks slot, "All done 🎉" banner, "Done" clears activeSlotID.
-  - **Multi-plan HomeView** — `todaysPlanSection` shows all plans grouped by condition with badge headers (body area + condition name), consolidated progress pill (e.g. "2/6 ✓"). `activePlanCard(plan:)` replaces single `activeSessionCard`. `setConditionFromPlan()` resolves condition from plan's `conditionID` before navigating.
-  - Implemented `SessionIntroView`, `ExerciseARView`.
+  - **Redesigned `HomeView`** to use **Horizontal Plan Card Carousel**:
+    - Replaced vertical stacked cards with snapping horizontal scrolling.
+    - Each `PlanSummaryCard` has a dynamic icon per `BodyRegion` (custom color tints like teal/orange/pink).
+    - Added Progress ring and Next Session time straight on the card index.
+  - **Redesigned `ScheduleView`** to use **Collapsible DisclosureGroup Sections**:
+    - Groups 15+ daily sessions into expandable sections per rehab plan.
+    - Auto-expands plans with sessions due *today*.
+    - Updated `ScheduleSessionRow` now displays an AR tracking badge and the time of the session upfront.
+  - **Enhanced UI Details**:
+    - Tinted the "New Session" button in `HomeView` with a light blue background for better visual hierarchy over the standard white cards.
+    - Added a consistent, positive "Keep it up, you're doing great!" advice blurb indicating the number of completed sessions today to both `HomeView` and `AssistiveAccessRootView` for extra encouragement.
+  - Implemented `SessionIntroView`.
+  - **Refactored `ExerciseARView` UI components**:
+    - Added `SmartFeedbackHeader` with `.ultraThinMaterial` styling.
+    - Upgraded `AngleDisplay` to use smooth numeric text slot machine transitions.
+    - Designed a `RepProgressRing` circular view for checking reps.
+    - Introduced `InstructionCuePill` system with clean SF Symbols mapping.
+    - Revamped `FinishButton` into a full-width capsule.
   - Created `ImageLoader.swift` (`BundledImage` helper) — runtime SPM bundle discovery without `Bundle.module`.
-
 ### Multi-Plan Architecture (CURRENT)
 ```
 User can have multiple active plans (e.g. shoulder + elbow = 6 total slots).

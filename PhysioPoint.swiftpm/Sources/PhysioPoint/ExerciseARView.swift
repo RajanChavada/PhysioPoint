@@ -21,267 +21,65 @@ public class RehabSessionViewModel: ObservableObject {
     @Published public var targetAngle: Double = 90
     @Published public var tolerance: Double = 15
     @Published public var isTrackingQualityGood: Bool = true
-
-    // --- Quality tracking ---
-    @Published public var totalFrames: Int = 0
-    @Published public var framesInGoodForm: Int = 0
-    @Published public var goodFormSeconds: Double = 0
-    @Published public var jitterAccumulated: Double = 0
-
-    // --- NEW: event log ---
-    public private(set) var sessionEvents: [SessionEvent] = []
-    // Tracks what exercise was running (set by ExerciseARView.onAppear)
-    public var exerciseName: String = ""
-
-    private var consecutiveGoodFrames: Int = 0
-    private var goodFormStreakReported: Bool = false  // avoid spamming the same event
-    private var cheatJointsDetected: Set<String> = []
-    private var lastRawAngle: Double?
-    private let framesPerSecond: Double = 30.0
+    
+    // All exercises are now AR-tracked — no timer-only mode needed
+    
     private let angleSmoother = AngleSmoother(windowSize: 5)
-
+    
     public var engine: RehabEngine
-
-    // --- Computed quality properties ---
-    /// 0.0–1.0. Percentage of frames where angle was in target zone.
-    public var qualityScore: Double {
-        guard totalFrames > 0 else { return 0 }
-        return Double(framesInGoodForm) / Double(totalFrames)
-    }
-
-    /// 0.0–1.0. Higher = smoother movement (less jitter).
-    public var controlRating: Double {
-        guard totalFrames > 1 else { return 1.0 }
-        let avgJitter = jitterAccumulated / Double(totalFrames - 1)
-        return max(0, min(1, 1.0 - avgJitter / 15.0))
-    }
-
-    /// Human-readable control label.
-    public var controlLabel: String {
-        switch controlRating {
-        case 0.8...: return "Excellent"
-        case 0.6..<0.8: return "Good"
-        case 0.4..<0.6: return "Fair"
-        default: return "Keep practicing"
-        }
-    }
-
+    
     public init(engine: RehabEngine = SimpleRehabEngine()) {
         self.engine = engine
     }
-
+    
     public func setup(targetAngle: Double, tolerance: Double, holdTime: TimeInterval, repDirection: RepDirection = .increasing, restAngle: Double = 90.0) {
         self.engine = SimpleRehabEngine(targetAngle: targetAngle, tolerance: tolerance, requiredHoldTime: holdTime, repDirection: repDirection, restAngle: restAngle)
     }
-
-    // Called by Coordinator when a secondary joint cheat is detected
-    public func recordCheat(jointName: String) {
-        guard !cheatJointsDetected.contains(jointName) else { return }
-        cheatJointsDetected.insert(jointName)
-        sessionEvents.append(.cheatDetected(jointName: jointName))
-    }
-
-    /// Generic 3-joint processing — works for any body area.
-    /// Applies temporal smoothing and tracks quality metrics per frame.
+    
+    /// Generic 3-joint processing — works for any body area (knee, elbow, hip, shoulder, ankle).
+    /// Applies temporal smoothing to reduce ARKit frame-to-frame jitter (~±5° → ~±1-2°).
     public func processJoints(proximal: SIMD3<Float>, joint: SIMD3<Float>, distal: SIMD3<Float>) {
         let state = engine.update(proximal: proximal, joint: joint, distal: distal)
         let repState = engine.currentRepState
-        let rawAngle = state.degrees
-        let smoothedAngle = angleSmoother.smooth(rawAngle)
-
-        totalFrames += 1
-        if state.zone == .target {
-            framesInGoodForm += 1
-            consecutiveGoodFrames += 1
-            goodFormSeconds += 1.0 / framesPerSecond
-
-            // Record a "held good form" event once per streak ≥ 2s
-            let streak = Double(consecutiveGoodFrames) / framesPerSecond
-            if streak >= 2.0 && !goodFormStreakReported {
-                goodFormStreakReported = true
-                sessionEvents.append(.goodFormHeld(seconds: streak))
-            }
-        } else {
-            consecutiveGoodFrames = 0
-            goodFormStreakReported = false
-        }
-
-        if let last = lastRawAngle { jitterAccumulated += abs(rawAngle - last) }
-        lastRawAngle = rawAngle
-
-        let consecutiveSnapshot = consecutiveGoodFrames
-        let currentTargetAngle = self.targetAngle
-        let currentTolerance = self.tolerance
-
+        let smoothedAngle = angleSmoother.smooth(state.degrees)
+        
         DispatchQueue.main.async {
             self.isBodyDetected = true
             self.currentAngle = smoothedAngle
             self.angleZone = state.zone
             self.repsCompleted = repState.repsCompleted
-            if smoothedAngle > self.bestAngle { self.bestAngle = smoothedAngle }
-
-            // Escalating hold messages
+            if smoothedAngle > self.bestAngle {
+                self.bestAngle = smoothedAngle
+            }
+            
             if repState.isHolding {
-                self.feedbackMessage = "Great form! Try to slowly bring it down now"
+                self.feedbackMessage = "Hold it! 💪"
             } else {
                 switch state.zone {
                 case .belowTarget:
-                    let gap = currentTargetAngle - smoothedAngle - currentTolerance
-                    if gap < 5 {
-                        self.feedbackMessage = "Almost there — just a bit more 🎯"
-                    } else if gap < 15 {
-                        self.feedbackMessage = "Getting closer! Keep going ↑"
-                    } else {
-                        self.feedbackMessage = "Slowly extend a little further"
-                    }
+                    self.feedbackMessage = "Move more toward target"
                 case .target:
-                    self.feedbackMessage = "In range — hold! ✅"
+                    self.feedbackMessage = "In target range — hold! ✅"
                 case .aboveTarget:
-                    self.feedbackMessage = "Ease back slightly — past the target"
+                    self.feedbackMessage = "Ease back toward target"
                 }
             }
         }
     }
-
+    
     /// Backward-compatible: hip/knee/ankle callers
     public func processJoints(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) {
         processJoints(proximal: hip, joint: knee, distal: ankle)
     }
-
-    // MARK: - Generate feedback at session end
-    // Called right before Finish button navigates to SummaryView.
-    // Returns exercise-specific positive + growth observations.
-    public func generateFeedback(for exerciseName: String, targetRange: ClosedRange<Double>) -> SessionFeedback {
-        var feedback = SessionFeedback()
-
-        let hitFullRange = bestAngle >= targetRange.upperBound - 5
-        let gapToBest = targetRange.upperBound - bestAngle
-        let hasCheat = !cheatJointsDetected.isEmpty
-        let firstCheat = cheatJointsDetected.first
-
-        // ── POSITIVE observation (what they genuinely did well) ──
-        let heldGoodForm = sessionEvents.contains {
-            if case .goodFormHeld = $0 { return true }
-            return false
-        }
-
-        if hitFullRange && heldGoodForm {
-            feedback.positiveObservation = "You reached your full target range AND held good form for multiple seconds. That's exactly the right combination."
-        } else if hitFullRange {
-            feedback.positiveObservation = "You hit your full target range today. Your \(bodyPartLabel(for: exerciseName)) is moving well."
-        } else if heldGoodForm {
-            feedback.positiveObservation = "You held steady in the target zone — that controlled hold time is what builds real strength."
-        } else if qualityScore > 0.5 {
-            feedback.positiveObservation = "Over half your session was in good form. That consistency adds up more than you'd think."
-        } else {
-            feedback.positiveObservation = "You showed up and did the work. Every session — even the hard ones — moves recovery forward."
-        }
-
-        // ── GROWTH observation (specific, not generic) ──
-        if hasCheat, let joint = firstCheat {
-            feedback.growthObservation = compensationCue(for: joint, exercise: exerciseName)
-        } else if !hitFullRange && gapToBest > 10 {
-            feedback.growthObservation = rangeGrowthCue(for: exerciseName, gapDegrees: gapToBest)
-        } else if controlRating < 0.5 {
-            feedback.growthObservation = "Try slowing the movement down — smoother reps build more tissue strength than fast ones."
-        } else if !hitFullRange && gapToBest <= 10 {
-            feedback.growthObservation = "You were close to full range — just a small amount more each session will get you there."
-        } else {
-            feedback.growthObservation = "Keep the same controlled pace next session to reinforce the movement pattern."
-        }
-
-        // ── JOURNEY message (forward-looking, tied to positive) ──
-        feedback.journeyMessage = journeyMessage(
-            for: exerciseName,
-            qualityScore: qualityScore,
-            hitFullRange: hitFullRange
-        )
-
-        return feedback
-    }
-
-    // MARK: - Exercise-specific copy helpers
-
-    private func bodyPartLabel(for exercise: String) -> String {
-        switch exercise {
-        case _ where exercise.lowercased().contains("knee"): return "knee"
-        case _ where exercise.lowercased().contains("elbow"): return "elbow"
-        case _ where exercise.lowercased().contains("shoulder"): return "shoulder"
-        case _ where exercise.lowercased().contains("hip"): return "hip"
-        case _ where exercise.lowercased().contains("ankle"): return "ankle"
-        default: return "joint"
-        }
-    }
-
-    private func compensationCue(for joint: String, exercise: String) -> String {
-        switch joint {
-        case "spine_4_joint", "spine_7_joint":
-            return "Your back shifted a little during the movement — focus on keeping your spine still while the \(bodyPartLabel(for: exercise)) does the work."
-        case "right_shoulder_1_joint", "left_shoulder_1_joint":
-            return "Your shoulder was moving during the exercise — try pinning your upper arm to your side so the elbow takes the load."
-        case "hips_joint":
-            return "Your hip shifted slightly — try squeezing your core before each rep to keep the pelvis stable."
-        case "right_foot_joint", "left_foot_joint":
-            return "Your foot position drifted — plant it flat and keep it still throughout the movement."
-        default:
-            return "There was some compensating movement — focus on isolating the target joint next session."
-        }
-    }
-
-    private func rangeGrowthCue(for exercise: String, gapDegrees: Double) -> String {
-        let gap = Int(gapDegrees)
-        switch exercise {
-        case "Seated Knee Extension", "Terminal Knee Extension":
-            return "You were \(gap)° short of full extension — try holding at your max point for 2 extra seconds to encourage the knee to open further."
-        case "Heel Slides", "Seated Knee Flexion":
-            return "You were \(gap)° short of full bend — after each slide, hold at the deepest point before returning."
-        case "Wall Slides", "Supine Shoulder Flexion", "Standing Shoulder Flexion":
-            return "You were \(gap)° from overhead — keep your back flat against the wall/surface and let gravity assist the last range."
-        case "Elbow Flexion & Extension", "Active Elbow Flexion":
-            return "You were \(gap)° from full range — make sure you fully straighten at the bottom of each rep, not just curl at the top."
-        case "Standing Hip Flexion":
-            return "You were \(gap)° short — try lifting the knee a little higher each time, keeping the stance leg fully straight."
-        case "Hip Hinge":
-            return "You were \(gap)° from target depth — focus on pushing the hips further back rather than bending the knees more."
-        default:
-            return "You were \(gap)° from the target range — aim to add just 2–3° more each session."
-        }
-    }
-
-    private func journeyMessage(for exercise: String, qualityScore: Double, hitFullRange: Bool) -> String {
-        let part = bodyPartLabel(for: exercise)
-        if hitFullRange && qualityScore > 0.6 {
-            return "If you keep sessions like this up 3× per week, research shows measurable \(part) strength gains within 2–3 weeks."
-        } else if qualityScore > 0.4 {
-            return "Consistent sessions like this — even imperfect ones — are what drive tissue healing in the \(part). You're on the right track."
-        } else {
-            return "Every session reintroduces safe load to the \(part). Even short, partial efforts help maintain circulation and prevent stiffness."
-        }
-    }
-
-    /// Reset between sessions.
-    public func resetQualityMetrics() {
-        totalFrames = 0
-        framesInGoodForm = 0
-        goodFormSeconds = 0
-        jitterAccumulated = 0
-        consecutiveGoodFrames = 0
-        goodFormStreakReported = false
-        cheatJointsDetected = []
-        sessionEvents = []
-        lastRawAngle = nil
-        bestAngle = 0
-        repsCompleted = 0
-        angleSmoother.reset()
-    }
-
+    
     public func bodyLost() {
         feedbackMessage = "Move back into frame"
         isInZone = false
-        consecutiveGoodFrames = 0
         angleSmoother.reset()
     }
-
+    
+    // startTimerMode() removed — all exercises are now AR-tracked
+    
     public func addDebug(_ msg: String) {
         DispatchQueue.main.async {
             self.debugText = msg
@@ -293,200 +91,155 @@ public class RehabSessionViewModel: ObservableObject {
 public struct ExerciseARView: View {
     @StateObject private var viewModel = RehabSessionViewModel()
     @EnvironmentObject var appState: PhysioPointState
-    @EnvironmentObject var settings: PhysioPointSettings
-
+    
     public init() {}
     
     public var body: some View {
         ZStack {
             arOrFallback
             
-            VStack(spacing: 4) {
-                // Removed debug banner
-                
-                // Tracking status indicator
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(viewModel.isBodyDetected ? Color.green : Color.red)
-                        .frame(width: 12, height: 12)
-                    Text(viewModel.isBodyDetected ? "Body Detected" : "No Body Detected")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.7))
-                .cornerRadius(20)
-                
-                Text(viewModel.feedbackMessage)
-                    .font(.headline)
-                    .padding()
-                    .background(feedbackColor.opacity(0.8))
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                
-                if !viewModel.formCueText.isEmpty {
-                    Text("💡 \(viewModel.formCueText)")
-                        .font(.subheadline)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.6))
+            VStack {
+                // DEBUG banner — remove for final submission
+                if !viewModel.debugText.isEmpty {
+                    Text(viewModel.debugText)
+                        .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.yellow)
-                        .cornerRadius(8)
-                }
-                
-                // Camera hint
-                if !viewModel.cameraHint.isEmpty {
-                    Text(viewModel.cameraHint)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.5))
-                        .cornerRadius(8)
-                }
-                
-                // Reliability badge
-                if !viewModel.reliabilityBadge.isEmpty {
-                    Text(viewModel.reliabilityBadge)
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                
-                if !viewModel.isTrackingQualityGood {
-                    Text("⚠️ Move to a better lit area for best tracking")
-                        .font(.caption)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.7))
-                        .foregroundColor(.white)
+                        .padding(6)
+                        .background(Color.black.opacity(0.8))
                         .cornerRadius(6)
+                        .padding(.top, 40) // safer push down
                 }
                 
-                if viewModel.isBodyDetected {
-                    Text(String(format: "Angle: %.1f°", viewModel.currentAngle))
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(angleDisplayColor)
-                        .shadow(color: .black, radius: 4, x: 0, y: 2)
-                }
+                // TOP: Feedback header
+                SmartFeedbackHeader(
+                    feedbackMessage: viewModel.feedbackMessage,
+                    isBodyDetected: viewModel.isBodyDetected
+                )
+                .padding(.top, viewModel.debugText.isEmpty ? 52 : 8)
                 
                 Spacer()
                 
-                Text("For educational demo only. Not medical advice.")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.bottom, 8)
-                
-                HStack(spacing: 20) {
-                    // Quality time — always visible
-                    VStack(spacing: 2) {
-                        Text(String(format: "%.0fs", viewModel.goodFormSeconds))
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.green)
-                        Text("In good form")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    .padding()
-                    .background(Color.black.opacity(0.7))
-                    .cornerRadius(16)
-
-                    // Rep counter — beta only
-                    if settings.repCountingBeta {
-                        VStack(spacing: 2) {
-                            Text("\(viewModel.repsCompleted)")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
-                                .foregroundColor(.blue)
-                            HStack(spacing: 3) {
-                                Image(systemName: "flask.fill")
-                                    .font(.caption2)
-                                    .foregroundColor(.orange)
-                                Text("Reps (beta)")
-                                    .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                        }
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(16)
-                    }
-                    
-                    Button {
-                        let exerciseName = appState.selectedExercise?.name ?? ""
-                        let targetReps = appState.selectedExercise?.reps ?? 3
-                        let targetRange = appState.selectedExercise?.targetAngleRange ?? 80...95
-                        let feedback = viewModel.generateFeedback(for: exerciseName, targetRange: targetRange)
-
-                        // Build per-rep results from tracked data
-                        var repResults: [RepResult] = []
-                        for i in 1...max(viewModel.repsCompleted, 1) {
-                            // Approximate: give each rep a quality based on best angle vs target
-                            let inRange = viewModel.bestAngle >= targetRange.lowerBound && viewModel.bestAngle <= targetRange.upperBound
-                            repResults.append(RepResult(
-                                repNumber: i,
-                                peakAngle: viewModel.bestAngle - Double.random(in: -4...4),
-                                timeInTarget: Double.random(in: 5...9),
-                                quality: inRange ? .good : .fair
-                            ))
-                        }
-
-                        appState.latestMetrics = SessionMetrics(
-                            bestAngle: viewModel.bestAngle,
-                            repsCompleted: viewModel.repsCompleted,
-                            targetReps: targetReps,
-                            targetAngleLow: targetRange.lowerBound,
-                            targetAngleHigh: targetRange.upperBound,
-                            timeInGoodForm: repResults.reduce(0) { $0 + $1.timeInTarget },
-                            repResults: repResults,
-                            previousBestAngle: 88,
-                            previousTimeInForm: 13,
-                            todayCompleted: 1,
-                            todayTotal: 3,
-                            sessionFeedback: feedback
+                // MID-FLOAT: Angle + Ring side by side
+                HStack {
+                    if viewModel.isBodyDetected {
+                        AngleDisplay(
+                            angle: viewModel.currentAngle,
+                            targetMinAngle: viewModel.targetAngle - viewModel.tolerance,
+                            targetMaxAngle: viewModel.targetAngle + viewModel.tolerance
                         )
-                        appState.navigationPath.append("Summary")
-                    } label: {
-                        Text("Finish")
-                            .font(.title2)
-                            .bold()
-                            .padding()
-                            .background(Color.red.opacity(0.8))
-                            .foregroundColor(.white)
-                            .cornerRadius(20)
+                    }
+                    Spacer()
+                    RepProgressRing(
+                        current: viewModel.repsCompleted,
+                        target: appState.selectedExercise?.reps ?? 3
+                    )
+                    .padding(.trailing, 16)
+                }
+                .padding(.horizontal, 16)
+                
+                // INSTRUCTION CUES
+                VStack(spacing: 8) {
+                    if !viewModel.formCueText.isEmpty {
+                        InstructionCuePill(
+                            symbol: "lightbulb.fill",
+                            message: viewModel.formCueText,
+                            symbolColor: .yellow
+                        )
+                    }
+                    if !viewModel.cameraHint.isEmpty {
+                        InstructionCuePill(
+                            symbol: "camera.fill",
+                            message: viewModel.cameraHint,
+                            symbolColor: .blue
+                        )
+                    }
+                    if !viewModel.reliabilityBadge.isEmpty {
+                        InstructionCuePill(
+                            symbol: "checkmark.shield.fill",
+                            message: viewModel.reliabilityBadge,
+                            symbolColor: .green
+                        )
+                    }
+                    if !viewModel.isTrackingQualityGood {
+                        InstructionCuePill(
+                            symbol: "exclamationmark.triangle.fill",
+                            message: "Move to a better lit area for best tracking",
+                            symbolColor: .orange
+                        )
                     }
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, 12)
+                
+                // BOTTOM: Finish button
+                FinishButton(action: {
+                    finishSession()
+                })
+                .padding(.bottom, 32)
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .navigationBarHidden(true)
         .onAppear {
-            viewModel.exerciseName = appState.selectedExercise?.name ?? ""
-            // All exercises have tracking configs — configure the engine with correct parameters
-            if let config = appState.selectedExercise?.trackingConfig {
-                let mid = (config.targetRange.lowerBound + config.targetRange.upperBound) / 2.0
-                let tol = (config.targetRange.upperBound - config.targetRange.lowerBound) / 2.0
-                
-                // CRITICAL: Actually configure the engine with exercise-specific values
-                let holdTime: TimeInterval = config.mode == .holdDuration
-                    ? Double(appState.selectedExercise?.holdSeconds ?? 3)
-                    : 2.0
-                viewModel.setup(
-                    targetAngle: mid,
-                    tolerance: tol,
-                    holdTime: holdTime,
-                    repDirection: config.repDirection,
-                    restAngle: config.restAngle
-                )
-                
-                viewModel.targetAngle = mid
-                viewModel.tolerance = tol
-                viewModel.cameraHint = "📷 Best results: place camera to your \(config.cameraPosition.rawValue)"
-                viewModel.reliabilityBadge = config.reliability == .reliable
-                    ? "✅ High accuracy tracking"
-                    : "⚠️ Approximate tracking — wider tolerance applied"
-            }
+            setupExercise()
+        }
+    }
+    
+    private func finishSession() {
+        let targetReps = appState.selectedExercise?.reps ?? 3
+        let targetRange = appState.selectedExercise?.targetAngleRange ?? 80...95
+
+        // Build per-rep results from tracked data
+        var repResults: [RepResult] = []
+        for i in 1...max(viewModel.repsCompleted, 1) {
+            let inRange = viewModel.bestAngle >= targetRange.lowerBound && viewModel.bestAngle <= targetRange.upperBound
+            repResults.append(RepResult(
+                repNumber: i,
+                peakAngle: viewModel.bestAngle - Double.random(in: -4...4),
+                timeInTarget: Double.random(in: 5...9),
+                quality: inRange ? .good : .fair
+            ))
+        }
+
+        appState.latestMetrics = SessionMetrics(
+            bestAngle: viewModel.bestAngle,
+            repsCompleted: viewModel.repsCompleted,
+            targetReps: targetReps,
+            targetAngleLow: targetRange.lowerBound,
+            targetAngleHigh: targetRange.upperBound,
+            timeInGoodForm: repResults.reduce(0) { $0 + $1.timeInTarget },
+            repResults: repResults,
+            previousBestAngle: 88,
+            previousTimeInForm: 13,
+            todayCompleted: 1,
+            todayTotal: 3
+        )
+        appState.navigationPath.append("Summary")
+    }
+
+    private func setupExercise() {
+        if let config = appState.selectedExercise?.trackingConfig {
+            let mid = (config.targetRange.lowerBound + config.targetRange.upperBound) / 2.0
+            let tol = (config.targetRange.upperBound - config.targetRange.lowerBound) / 2.0
+            
+            let holdTime: TimeInterval = config.mode == .holdDuration
+                ? Double(appState.selectedExercise?.holdSeconds ?? 3)
+                : 2.0
+            viewModel.setup(
+                targetAngle: mid,
+                tolerance: tol,
+                holdTime: holdTime,
+                repDirection: config.repDirection,
+                restAngle: config.restAngle
+            )
+            
+            viewModel.targetAngle = mid
+            viewModel.tolerance = tol
+            // Removed emoji hardcoding for sf-symbol compatibility in cues
+            viewModel.cameraHint = "Best results: place camera to your \(config.cameraPosition.rawValue)"
+            viewModel.reliabilityBadge = config.reliability == .reliable
+                ? "High accuracy tracking"
+                : "Approximate tracking — wider tolerance applied"
         }
     }
     
@@ -504,22 +257,6 @@ public struct ExerciseARView: View {
                 viewModel.addDebug("NON-iOS path: showing fallback slider (macOS or Simulator)")
             }
         #endif
-    }
-    
-    private var feedbackColor: Color {
-        switch viewModel.angleZone {
-        case .belowTarget: return .orange
-        case .target: return .green
-        case .aboveTarget: return .blue
-        }
-    }
-    
-    private var angleDisplayColor: Color {
-        switch viewModel.angleZone {
-        case .belowTarget: return .orange
-        case .target: return .green
-        case .aboveTarget: return .white
-        }
     }
     
     @ViewBuilder
@@ -551,6 +288,142 @@ public struct ExerciseARView: View {
                 Spacer()
             }
         }
+    }
+}
+
+// MARK: - Extracted UI Components
+
+struct SmartFeedbackHeader: View {
+    let feedbackMessage: String
+    let isBodyDetected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isBodyDetected ? "figure.walk.motion" : "figure.stand")
+                .foregroundStyle(isBodyDetected ? .green : .secondary)
+                .symbolEffect(.pulse, isActive: isBodyDetected)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feedbackMessage)
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer()
+
+            Image(systemName: "waveform.path.ecg")
+                .foregroundStyle(isBodyDetected ? .green : .orange)
+                .font(.title3)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .padding(.horizontal, 16)
+    }
+}
+
+struct AngleDisplay: View {
+    let angle: Double
+    let targetMinAngle: Double
+    let targetMaxAngle: Double
+    
+    @State private var inTargetZone: Bool = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: "angle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text("\(Int(angle))°")
+                .font(.system(.largeTitle, design: .rounded).bold())
+                .contentTransition(.numericText(value: angle))
+                .animation(.spring(duration: 0.3), value: angle)
+                .foregroundStyle(inTargetZone ? .green : .orange)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .scaleEffect(inTargetZone ? 1.05 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: inTargetZone)
+        .sensoryFeedback(.impact(weight: .heavy), trigger: inTargetZone)
+        .onChange(of: angle) { _, newVal in
+            inTargetZone = newVal >= targetMinAngle && newVal <= targetMaxAngle
+        }
+    }
+}
+
+struct RepProgressRing: View {
+    let current: Int
+    let target: Int
+
+    private var progress: Double { Double(current) / Double(max(target, 1)) }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(.white.opacity(0.2), lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeInOut(duration: 0.4), value: progress)
+            VStack(spacing: 0) {
+                Text("\(current)")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .contentTransition(.numericText())
+                    .animation(.default, value: current)
+                Text("/ \(target)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 72, height: 72)
+        .sensoryFeedback(.success, trigger: current == target && target > 0)
+    }
+}
+
+struct InstructionCuePill: View {
+    let symbol: String
+    let message: String
+    var symbolColor: Color = .orange
+
+    var body: some View {
+        Label {
+            Text(message)
+                .font(.system(.footnote, design: .rounded).bold())
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(symbolColor)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
+        .labelStyle(.titleAndIcon)
+    }
+}
+
+struct FinishButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Finish Session", systemImage: "checkmark.circle.fill")
+                .font(.system(.body, design: .rounded).bold())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .clipShape(Capsule())
+        .padding(.horizontal, 24)
+        .sensoryFeedback(.success, trigger: false)
     }
 }
 
@@ -603,10 +476,6 @@ struct ARViewRepresentable: UIViewRepresentable {
         private var isSetUp = false
         private var frameCount = 0
         private var bodyFrameCount = 0
-
-        private var lastGoodAngle: Double = 0
-        private var poorTrackingFrames: Int = 0
-        private let maxPoorFrames: Int = 5
         
         // ── Full-body joint tracking ──
         // Maps joint name → index in jointModelTransforms array
@@ -826,28 +695,17 @@ struct ARViewRepresentable: UIViewRepresentable {
             if let proximalPos = worldPositions[proximalName],
                let middlePos  = worldPositions[middleName],
                let distalPos  = worldPositions[distalName] {
+                viewModel.processJoints(proximal: proximalPos, joint: middlePos, distal: distalPos)
                 
-                if validateJointPositions(proximal: proximalPos, middle: middlePos, distal: distalPos) {
-                    poorTrackingFrames = 0
-                    DispatchQueue.main.async { [weak self] in
-                        self?.viewModel.isTrackingQualityGood = true
-                    }
-                    
-                    viewModel.processJoints(proximal: proximalPos, joint: middlePos, distal: distalPos)
-                    lastGoodAngle = viewModel.currentAngle
-                    
-                    let newCue = selectFormCue(primaryZone: viewModel.angleZone, config: config, skeleton: skeleton)
-                    if newCue != viewModel.formCueText {
-                        DispatchQueue.main.async { [weak self] in
-                            self?.viewModel.formCueText = newCue ?? ""
-                        }
-                    }
-                } else {
-                    handlePoorTracking()
+                if passCount <= 3 || passCount % 120 == 0 {
+                    viewModel.addDebug("✅ #\(passCount) tracking: \(proximalName)→\(middleName)→\(distalName) angle:\(String(format: "%.1f°", viewModel.currentAngle))")
                 }
             } else {
-                // Could not resolve one or more joints
-                handlePoorTracking()
+                // Could not resolve one or more joints — log which ones are missing
+                if passCount <= 5 {
+                    let missing = [proximalName, middleName, distalName].filter { worldPositions[$0] == nil }
+                    viewModel.addDebug("⚠️ Missing joints: \(missing.joined(separator: ", "))")
+                }
             }
             
             // Update skeleton visualization
@@ -903,67 +761,6 @@ struct ARViewRepresentable: UIViewRepresentable {
             entity.position = (from + to) / 2.0
             let dir = normalize(to - from)
             entity.orientation = simd_quatf(from: SIMD3<Float>(0, 1, 0), to: dir)
-        }
-
-        // MARK: - Form Intelligence
-
-        private func handlePoorTracking() {
-            poorTrackingFrames += 1
-            guard poorTrackingFrames >= maxPoorFrames else { return }
-
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.viewModel.isTrackingQualityGood = false
-                self.viewModel.feedbackMessage = "Adjust your position so the iPad can see the joint clearly."
-                if self.viewModel.totalFrames > 0 {
-                    self.viewModel.currentAngle = self.lastGoodAngle
-                }
-            }
-        }
-
-        func validateJointPositions(
-            proximal: SIMD3<Float>,
-            middle: SIMD3<Float>,
-            distal: SIMD3<Float>
-        ) -> Bool {
-            let isValid = { (v: SIMD3<Float>) -> Bool in
-                v.x.isFinite && v.y.isFinite && v.z.isFinite
-            }
-            guard isValid(proximal) && isValid(middle) && isValid(distal) else { return false }
-            let segLen = simd_distance(proximal, middle)
-            if segLen < 0.05 { return false } // likely collapsed/occluded
-            return true
-        }
-
-        func selectFormCue(
-            primaryZone: AngleZone,
-            config: JointTrackingConfig,
-            skeleton: ARSkeleton3D
-        ) -> String? {
-            let cues = config.formCues
-            guard !cues.isEmpty else { return nil }
-
-            for cue in cues {
-                guard
-                    let watchJoint = cue.jointToWatch,
-                    let maxDev = cue.maxAngleDeviation,
-                    let watchIdx = jointIndexMap[watchJoint],
-                    watchIdx < skeleton.jointModelTransforms.count
-                else { continue }
-
-                let watchWorldM = skeleton.jointModelTransforms[watchIdx]
-                let deviation = abs(Double(watchWorldM.columns.3.y))
-                if deviation > maxDev / 100.0 {
-                    viewModel.recordCheat(jointName: watchJoint)
-                    return cue.description
-                }
-            }
-
-            if let zoneCue = cues.first(where: { $0.zone == primaryZone }) {
-                return zoneCue.description
-            }
-
-            return cues.first?.description
         }
     }
 }

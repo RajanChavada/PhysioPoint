@@ -98,170 +98,148 @@ public struct ExerciseARView: View {
         ZStack {
             arOrFallback
             
-            VStack(spacing: 4) {
+            VStack {
                 // DEBUG banner — remove for final submission
-                Text(viewModel.debugText)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.yellow)
-                    .padding(6)
-                    .background(Color.black.opacity(0.8))
-                    .cornerRadius(6)
-                    .padding(.top, 4)
-                
-                // Tracking status indicator
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(viewModel.isBodyDetected ? Color.green : Color.red)
-                        .frame(width: 12, height: 12)
-                    Text(viewModel.isBodyDetected ? "Body Detected" : "No Body Detected")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.7))
-                .cornerRadius(20)
-                
-                Text(viewModel.feedbackMessage)
-                    .font(.headline)
-                    .padding()
-                    .background(feedbackColor.opacity(0.8))
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                
-                if !viewModel.formCueText.isEmpty {
-                    Text("💡 \(viewModel.formCueText)")
-                        .font(.subheadline)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.6))
+                if !viewModel.debugText.isEmpty {
+                    Text(viewModel.debugText)
+                        .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.yellow)
-                        .cornerRadius(8)
-                }
-                
-                // Camera hint
-                if !viewModel.cameraHint.isEmpty {
-                    Text(viewModel.cameraHint)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.5))
-                        .cornerRadius(8)
-                }
-                
-                // Reliability badge
-                if !viewModel.reliabilityBadge.isEmpty {
-                    Text(viewModel.reliabilityBadge)
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                
-                if !viewModel.isTrackingQualityGood {
-                    Text("⚠️ Move to a better lit area for best tracking")
-                        .font(.caption)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.7))
-                        .foregroundColor(.white)
+                        .padding(6)
+                        .background(Color.black.opacity(0.8))
                         .cornerRadius(6)
+                        .padding(.top, 40) // safer push down
                 }
                 
-                if viewModel.isBodyDetected {
-                    Text(String(format: "Angle: %.1f°", viewModel.currentAngle))
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(angleDisplayColor)
-                        .shadow(color: .black, radius: 4, x: 0, y: 2)
-                }
+                // TOP: Feedback header
+                SmartFeedbackHeader(
+                    feedbackMessage: viewModel.feedbackMessage,
+                    isBodyDetected: viewModel.isBodyDetected
+                )
+                .padding(.top, viewModel.debugText.isEmpty ? 52 : 8)
                 
                 Spacer()
                 
-                Text("For educational demo only. Not medical advice.")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.bottom, 8)
-                
-                HStack(spacing: 30) {
-                    Text("Reps: \(viewModel.repsCompleted)")
-                        .font(.largeTitle)
-                        .bold()
-                        .padding()
-                        .background(Color.blue.opacity(0.8))
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                    
-                    Button {
-                        let targetReps = appState.selectedExercise?.reps ?? 3
-                        let targetRange = appState.selectedExercise?.targetAngleRange ?? 80...95
-
-                        // Build per-rep results from tracked data
-                        var repResults: [RepResult] = []
-                        for i in 1...max(viewModel.repsCompleted, 1) {
-                            // Approximate: give each rep a quality based on best angle vs target
-                            let inRange = viewModel.bestAngle >= targetRange.lowerBound && viewModel.bestAngle <= targetRange.upperBound
-                            repResults.append(RepResult(
-                                repNumber: i,
-                                peakAngle: viewModel.bestAngle - Double.random(in: -4...4),
-                                timeInTarget: Double.random(in: 5...9),
-                                quality: inRange ? .good : .fair
-                            ))
-                        }
-
-                        appState.latestMetrics = SessionMetrics(
-                            bestAngle: viewModel.bestAngle,
-                            repsCompleted: viewModel.repsCompleted,
-                            targetReps: targetReps,
-                            targetAngleLow: targetRange.lowerBound,
-                            targetAngleHigh: targetRange.upperBound,
-                            timeInGoodForm: repResults.reduce(0) { $0 + $1.timeInTarget },
-                            repResults: repResults,
-                            previousBestAngle: 88,
-                            previousTimeInForm: 13,
-                            todayCompleted: 1,
-                            todayTotal: 3
+                // MID-FLOAT: Angle + Ring side by side
+                HStack {
+                    if viewModel.isBodyDetected {
+                        AngleDisplay(
+                            angle: viewModel.currentAngle,
+                            targetMinAngle: viewModel.targetAngle - viewModel.tolerance,
+                            targetMaxAngle: viewModel.targetAngle + viewModel.tolerance
                         )
-                        appState.navigationPath.append("Summary")
-                    } label: {
-                        Text("Finish")
-                            .font(.title2)
-                            .bold()
-                            .padding()
-                            .background(Color.red.opacity(0.8))
-                            .foregroundColor(.white)
-                            .cornerRadius(20)
+                    }
+                    Spacer()
+                    RepProgressRing(
+                        current: viewModel.repsCompleted,
+                        target: appState.selectedExercise?.reps ?? 3
+                    )
+                    .padding(.trailing, 16)
+                }
+                .padding(.horizontal, 16)
+                
+                // INSTRUCTION CUES
+                VStack(spacing: 8) {
+                    if !viewModel.formCueText.isEmpty {
+                        InstructionCuePill(
+                            symbol: "lightbulb.fill",
+                            message: viewModel.formCueText,
+                            symbolColor: .yellow
+                        )
+                    }
+                    if !viewModel.cameraHint.isEmpty {
+                        InstructionCuePill(
+                            symbol: "camera.fill",
+                            message: viewModel.cameraHint,
+                            symbolColor: .blue
+                        )
+                    }
+                    if !viewModel.reliabilityBadge.isEmpty {
+                        InstructionCuePill(
+                            symbol: "checkmark.shield.fill",
+                            message: viewModel.reliabilityBadge,
+                            symbolColor: .green
+                        )
+                    }
+                    if !viewModel.isTrackingQualityGood {
+                        InstructionCuePill(
+                            symbol: "exclamationmark.triangle.fill",
+                            message: "Move to a better lit area for best tracking",
+                            symbolColor: .orange
+                        )
                     }
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, 12)
+                
+                // BOTTOM: Finish button
+                FinishButton(action: {
+                    finishSession()
+                })
+                .padding(.bottom, 32)
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .navigationBarHidden(true)
         .onAppear {
-            // All exercises have tracking configs — configure the engine with correct parameters
-            if let config = appState.selectedExercise?.trackingConfig {
-                let mid = (config.targetRange.lowerBound + config.targetRange.upperBound) / 2.0
-                let tol = (config.targetRange.upperBound - config.targetRange.lowerBound) / 2.0
-                
-                // CRITICAL: Actually configure the engine with exercise-specific values
-                let holdTime: TimeInterval = config.mode == .holdDuration
-                    ? Double(appState.selectedExercise?.holdSeconds ?? 3)
-                    : 2.0
-                viewModel.setup(
-                    targetAngle: mid,
-                    tolerance: tol,
-                    holdTime: holdTime,
-                    repDirection: config.repDirection,
-                    restAngle: config.restAngle
-                )
-                
-                viewModel.targetAngle = mid
-                viewModel.tolerance = tol
-                viewModel.cameraHint = "📷 Best results: place camera to your \(config.cameraPosition.rawValue)"
-                viewModel.reliabilityBadge = config.reliability == .reliable
-                    ? "✅ High accuracy tracking"
-                    : "⚠️ Approximate tracking — wider tolerance applied"
-            }
+            setupExercise()
+        }
+    }
+    
+    private func finishSession() {
+        let targetReps = appState.selectedExercise?.reps ?? 3
+        let targetRange = appState.selectedExercise?.targetAngleRange ?? 80...95
+
+        // Build per-rep results from tracked data
+        var repResults: [RepResult] = []
+        for i in 1...max(viewModel.repsCompleted, 1) {
+            let inRange = viewModel.bestAngle >= targetRange.lowerBound && viewModel.bestAngle <= targetRange.upperBound
+            repResults.append(RepResult(
+                repNumber: i,
+                peakAngle: viewModel.bestAngle - Double.random(in: -4...4),
+                timeInTarget: Double.random(in: 5...9),
+                quality: inRange ? .good : .fair
+            ))
+        }
+
+        appState.latestMetrics = SessionMetrics(
+            bestAngle: viewModel.bestAngle,
+            repsCompleted: viewModel.repsCompleted,
+            targetReps: targetReps,
+            targetAngleLow: targetRange.lowerBound,
+            targetAngleHigh: targetRange.upperBound,
+            timeInGoodForm: repResults.reduce(0) { $0 + $1.timeInTarget },
+            repResults: repResults,
+            previousBestAngle: 88,
+            previousTimeInForm: 13,
+            todayCompleted: 1,
+            todayTotal: 3
+        )
+        appState.navigationPath.append("Summary")
+    }
+
+    private func setupExercise() {
+        if let config = appState.selectedExercise?.trackingConfig {
+            let mid = (config.targetRange.lowerBound + config.targetRange.upperBound) / 2.0
+            let tol = (config.targetRange.upperBound - config.targetRange.lowerBound) / 2.0
+            
+            let holdTime: TimeInterval = config.mode == .holdDuration
+                ? Double(appState.selectedExercise?.holdSeconds ?? 3)
+                : 2.0
+            viewModel.setup(
+                targetAngle: mid,
+                tolerance: tol,
+                holdTime: holdTime,
+                repDirection: config.repDirection,
+                restAngle: config.restAngle
+            )
+            
+            viewModel.targetAngle = mid
+            viewModel.tolerance = tol
+            // Removed emoji hardcoding for sf-symbol compatibility in cues
+            viewModel.cameraHint = "Best results: place camera to your \(config.cameraPosition.rawValue)"
+            viewModel.reliabilityBadge = config.reliability == .reliable
+                ? "High accuracy tracking"
+                : "Approximate tracking — wider tolerance applied"
         }
     }
     
@@ -279,22 +257,6 @@ public struct ExerciseARView: View {
                 viewModel.addDebug("NON-iOS path: showing fallback slider (macOS or Simulator)")
             }
         #endif
-    }
-    
-    private var feedbackColor: Color {
-        switch viewModel.angleZone {
-        case .belowTarget: return .orange
-        case .target: return .green
-        case .aboveTarget: return .blue
-        }
-    }
-    
-    private var angleDisplayColor: Color {
-        switch viewModel.angleZone {
-        case .belowTarget: return .orange
-        case .target: return .green
-        case .aboveTarget: return .white
-        }
     }
     
     @ViewBuilder
@@ -326,6 +288,142 @@ public struct ExerciseARView: View {
                 Spacer()
             }
         }
+    }
+}
+
+// MARK: - Extracted UI Components
+
+struct SmartFeedbackHeader: View {
+    let feedbackMessage: String
+    let isBodyDetected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isBodyDetected ? "figure.walk.motion" : "figure.stand")
+                .foregroundStyle(isBodyDetected ? .green : .secondary)
+                .symbolEffect(.pulse, isActive: isBodyDetected)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feedbackMessage)
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer()
+
+            Image(systemName: "waveform.path.ecg")
+                .foregroundStyle(isBodyDetected ? .green : .orange)
+                .font(.title3)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .padding(.horizontal, 16)
+    }
+}
+
+struct AngleDisplay: View {
+    let angle: Double
+    let targetMinAngle: Double
+    let targetMaxAngle: Double
+    
+    @State private var inTargetZone: Bool = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: "angle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text("\(Int(angle))°")
+                .font(.system(.largeTitle, design: .rounded).bold())
+                .contentTransition(.numericText(value: angle))
+                .animation(.spring(duration: 0.3), value: angle)
+                .foregroundStyle(inTargetZone ? .green : .orange)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .scaleEffect(inTargetZone ? 1.05 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: inTargetZone)
+        .sensoryFeedback(.impact(weight: .heavy), trigger: inTargetZone)
+        .onChange(of: angle) { _, newVal in
+            inTargetZone = newVal >= targetMinAngle && newVal <= targetMaxAngle
+        }
+    }
+}
+
+struct RepProgressRing: View {
+    let current: Int
+    let target: Int
+
+    private var progress: Double { Double(current) / Double(max(target, 1)) }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(.white.opacity(0.2), lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeInOut(duration: 0.4), value: progress)
+            VStack(spacing: 0) {
+                Text("\(current)")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .contentTransition(.numericText())
+                    .animation(.default, value: current)
+                Text("/ \(target)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 72, height: 72)
+        .sensoryFeedback(.success, trigger: current == target && target > 0)
+    }
+}
+
+struct InstructionCuePill: View {
+    let symbol: String
+    let message: String
+    var symbolColor: Color = .orange
+
+    var body: some View {
+        Label {
+            Text(message)
+                .font(.system(.footnote, design: .rounded).bold())
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(symbolColor)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
+        .labelStyle(.titleAndIcon)
+    }
+}
+
+struct FinishButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Finish Session", systemImage: "checkmark.circle.fill")
+                .font(.system(.body, design: .rounded).bold())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .clipShape(Capsule())
+        .padding(.horizontal, 24)
+        .sensoryFeedback(.success, trigger: false)
     }
 }
 
