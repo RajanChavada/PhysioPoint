@@ -20,7 +20,7 @@ let package = Package(
             bundleIdentifier: "com.physiopoint.app",
             displayVersion: "1.0",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .calendar),
+            appIcon: .asset("ppicon"),
             accentColor: .presetColor(.blue),
             supportedDeviceFamilies: [
                 .pad,

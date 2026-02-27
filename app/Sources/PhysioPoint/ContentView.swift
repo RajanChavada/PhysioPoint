@@ -91,10 +91,26 @@ struct ScheduleTabView: View {
     @EnvironmentObject var storage: StorageService
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $appState.navigationPath) {
             ScheduleView()
                 .environmentObject(appState)
                 .environmentObject(storage)
+                .navigationDestination(for: String.self) { destination in
+                    switch destination {
+                    case "Triage":
+                        TriageView()
+                    case "Schedule":
+                        ScheduleView()
+                    case "SessionIntro":
+                        SessionIntroView()
+                    case "ExerciseAR":
+                        ExerciseARView()
+                    case "Summary":
+                        SummaryView()
+                    default:
+                        EmptyView()
+                    }
+                }
         }
     }
 }
@@ -268,6 +284,7 @@ private struct OnboardingPageContent: View {
 struct HomeView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
+    @AppStorage("simulateAssistiveAccess") private var simulateAssistiveAccess = false
 
     var body: some View {
         NavigationStack(path: $appState.navigationPath) {
@@ -279,19 +296,40 @@ struct HomeView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Header
-                        VStack(spacing: 6) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "figure.run.circle.fill")
-                                    .font(.title)
-                                    .foregroundStyle(PPColor.vitalityTeal)
-                                Text("PhysioPoint")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                BundledImage("PP_GRAD", maxHeight: 200)
+                                    .frame(width: 200, height: 200)
+                                
+                                Text("Your recovery companion")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.leading, 8)
                             }
-                            Text("Your recovery companion")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            Spacer()
                         }
-                        .padding(.top, 20)
+                        .padding(.top, 10)
+                        
+                        // Accessibility Quick Toggle Card
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle(isOn: $simulateAssistiveAccess.animation(.spring())) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "accessibility")
+                                        .font(.title2)
+                                        .foregroundColor(PPColor.actionBlue)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Accessibility Mode")
+                                            .font(.headline)
+                                        Text("Simplify the layout and enlarge buttons")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .tint(PPColor.actionBlue)
+                        }
+                        .padding(16)
+                        .physioGlass(.card)
 
                         // Today's Plan slots (consolidated across all plans)
                         if !storage.dailyPlans.isEmpty {
@@ -528,10 +566,10 @@ struct HomeView: View {
     private func setConditionFromPlan(_ plan: DailyPlan, slot: PlanSlot? = nil) {
         // Find the matching condition and set it + exercise
         for cond in Condition.library {
-            if cond.id == plan.conditionID {
+            if cond.id == plan.conditionID || cond.name == plan.conditionName {
                 appState.selectedCondition = cond
                 if let slot = slot {
-                    appState.selectedExercise = cond.recommendedExercises.first(where: { $0.id == slot.exerciseID }) ?? cond.recommendedExercises.first
+                    appState.selectedExercise = cond.recommendedExercises.first(where: { $0.id == slot.exerciseID || $0.name == slot.exerciseName }) ?? cond.recommendedExercises.first
                 } else {
                     appState.selectedExercise = cond.recommendedExercises.first
                 }

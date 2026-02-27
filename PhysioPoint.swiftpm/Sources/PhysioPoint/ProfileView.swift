@@ -56,19 +56,15 @@ struct ProfileView: View {
 
                         // Settings rows
                         VStack(spacing: 0) {
-                            settingsRow(icon: "bell.fill", title: "Reminders", color: .orange)
+                            NavigationLink(destination: AccessibilitySettingsView()) {
+                                settingsRow(icon: "accessibility", title: "Accessibility", color: PPColor.actionBlue)
+                            }
+                            
                             Divider().padding(.leading, 52)
-                            settingsRow(icon: "accessibility", title: "Accessibility", color: PPColor.actionBlue)
-                            Divider().padding(.leading, 52)
-                            settingsRow(icon: "info.circle.fill", title: "About PhysioPoint", color: .secondary)
-                            Divider().padding(.leading, 52)
-                            AssistiveAccessToggleRow()
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                            Divider().padding(.leading, 52)
-                            BetaRepCountingToggleRow()
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
+                            
+                            NavigationLink(destination: AboutView()) {
+                                settingsRow(icon: "info.circle.fill", title: "About PhysioPoint", color: .secondary)
+                            }
                         }
                         .physioGlass(.card)
 
@@ -114,6 +110,7 @@ struct ProfileView: View {
                 .frame(width: 32)
             Text(title)
                 .font(.subheadline)
+                .foregroundColor(.primary)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption)
@@ -121,5 +118,6 @@ struct ProfileView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .background(Color.white.opacity(0.001)) // Make entire row tappable
     }
 }

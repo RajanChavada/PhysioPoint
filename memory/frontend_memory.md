@@ -53,6 +53,10 @@
     - Introduced `InstructionCuePill` system with clean SF Symbols mapping.
     - Revamped `FinishButton` into a full-width capsule.
   - Created `ImageLoader.swift` (`BundledImage` helper) — runtime SPM bundle discovery without `Bundle.module`.
+  - **Fixed Critical UI Bugs**: Added `NavigationStack(path: $appState.navigationPath)` + `.navigationDestination` modifiers to `ScheduleTabView` to prevent the navigation bar from disappearing. Updated `startSlot` logic to fallback to `conditionName` and `exerciseName` lookups, solving "no exercise" errors for hardcoded preload UUIDs.
+  - **Profile Clean Up**: Stripped the placeholder "Reminders" local notification rows due to Playground limitations. Converted static settings rows into functional `NavigationLink` targets pointing to a newly created `AccessibilitySettingsView` (with `simulateAssistiveAccess` toggle relocated here) and a detailed `AboutView` showing versions & disclaimers.
+  - **Home Screen & Narrative**: Refactored the `AboutView` to feature 4 extensive essay sections detailing the problem space and inclusive design process. Reconfigured the root `HomeView` header, replacing generic SF Symbols with a prominent `200x200` `PP_GRAD.png` custom logo aligned to the leading edge. The `simulateAssistiveAccess` toggle was extracted into a highly-visible, explicitly labelled standalone card at the top of the Home View.
+  - **App Icon Configured**: Generated a valid `Assets.xcassets/ppicon.appiconset` catalog with a `Contents.json` manifest within Swift Playgrounds to successfully resolve the `appIcon: .asset("ppicon")` property inside `Package.swift`, eliminating build compilation errors and stamping the official `PG` logo on the iPadOS/macOS Home Screen.
 ### Multi-Plan Architecture (CURRENT)
 ```
 User can have multiple active plans (e.g. shoulder + elbow = 6 total slots).

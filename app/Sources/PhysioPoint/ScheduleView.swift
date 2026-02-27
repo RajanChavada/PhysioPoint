@@ -295,10 +295,10 @@ struct ScheduleView: View {
         if slot.isCompleted { storage.unmarkSlotComplete(slot.id) }
         appState.activeSlotID = slot.id
         
-        // Find matching Condition by plan.conditionID
-        if let cond = Condition.library.first(where: { $0.id == plan.conditionID }) {
+        // Find matching Condition by plan.conditionID or fallback to plan.conditionName
+        if let cond = Condition.library.first(where: { $0.id == plan.conditionID || $0.name == plan.conditionName }) {
             appState.selectedCondition = cond
-            if let ex = cond.recommendedExercises.first(where: { $0.id == slot.exerciseID }) {
+            if let ex = cond.recommendedExercises.first(where: { $0.id == slot.exerciseID || $0.name == slot.exerciseName }) {
                 appState.selectedExercise = ex
             } else {
                 appState.selectedExercise = cond.recommendedExercises.first
