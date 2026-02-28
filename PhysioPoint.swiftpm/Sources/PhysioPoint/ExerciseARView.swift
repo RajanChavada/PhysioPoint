@@ -22,6 +22,14 @@ public class RehabSessionViewModel: ObservableObject {
     @Published public var tolerance: Double = 15
     @Published public var isTrackingQualityGood: Bool = true
     
+    // Arrays for dynamic feedback messages
+    private let holdMessages = ["Hold it! 💪", "Keep it steady! 🎯", "You're doing great, hold there! ⏱️", "Maintain that position! 🧍"]
+    private let belowMessages = ["Move more toward target", "Push a little further if you can", "Keep going, you're almost there!", "Stretch a bit more toward the goal"]
+    private let targetMessages = ["In target range — hold! ✅", "Perfect angle, keep it there! 🎯", "Great form! Hold steady. 🛡️", "You hit the mark! Maintain it. ⭐"]
+    private let aboveMessages = ["Ease back toward target", "Slow down, you're past the target ✋", "Make sure you are not pushing too hard 🛑", "Gently return to the target zone 🧘"]
+    
+    private var currentFeedbackCategory: String = ""
+    
     // All exercises are now AR-tracked — no timer-only mode needed
     
     private let angleSmoother = AngleSmoother(windowSize: 5)
@@ -53,15 +61,15 @@ public class RehabSessionViewModel: ObservableObject {
             }
             
             if repState.isHolding {
-                self.feedbackMessage = "Hold it! 💪"
+                self.updateFeedback(category: "holding")
             } else {
                 switch state.zone {
                 case .belowTarget:
-                    self.feedbackMessage = "Move more toward target"
+                    self.updateFeedback(category: "below")
                 case .target:
-                    self.feedbackMessage = "In target range — hold! ✅"
+                    self.updateFeedback(category: "target")
                 case .aboveTarget:
-                    self.feedbackMessage = "Ease back toward target"
+                    self.updateFeedback(category: "above")
                 }
             }
         }
@@ -70,6 +78,19 @@ public class RehabSessionViewModel: ObservableObject {
     /// Backward-compatible: hip/knee/ankle callers
     public func processJoints(hip: SIMD3<Float>, knee: SIMD3<Float>, ankle: SIMD3<Float>) {
         processJoints(proximal: hip, joint: knee, distal: ankle)
+    }
+    
+    private func updateFeedback(category: String) {
+        if category != currentFeedbackCategory {
+            currentFeedbackCategory = category
+            switch category {
+            case "holding": self.feedbackMessage = holdMessages.randomElement() ?? "Hold it! 💪"
+            case "below": self.feedbackMessage = belowMessages.randomElement() ?? "Move more toward target"
+            case "target": self.feedbackMessage = targetMessages.randomElement() ?? "In target range — hold! ✅"
+            case "above": self.feedbackMessage = aboveMessages.randomElement() ?? "Ease back toward target"
+            default: break
+            }
+        }
     }
     
     public func bodyLost() {
