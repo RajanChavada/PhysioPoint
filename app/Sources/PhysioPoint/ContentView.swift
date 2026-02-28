@@ -17,12 +17,21 @@ struct ContentView: View {
                 AssistiveAccessRootView()
                     .environmentObject(appState)
                     .environmentObject(storage)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing),
+                        removal: .move(edge: .leading)
+                    ))
             } else {
                 MainTabView()
                     .environmentObject(appState)
                     .environmentObject(storage)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading),
+                        removal: .move(edge: .trailing)
+                    ))
             }
         }
+        .animation(.spring(duration: 0.4), value: simulateAssistiveAccess)
         .environment(\.isAssistiveAccessActive, simulateAssistiveAccess)
     }
 }
@@ -281,10 +290,26 @@ private struct OnboardingPageContent: View {
 
 // MARK: - Home View (Post-Onboarding)
 
+enum HomeUserState {
+    case firstLaunch
+    case noSessions
+    case hasSessions
+}
+
 struct HomeView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
     @AppStorage("simulateAssistiveAccess") private var simulateAssistiveAccess = false
+    @AppStorage("hasCompletedCoachMark") private var hasCompletedCoachMark = false
+    
+    @State private var newSessionButtonFrame: CGRect = .zero
+    @State private var showCoachMark = false
+
+    var userState: HomeUserState {
+        if !storage.dailyPlans.isEmpty { return .hasSessions }
+        if hasCompletedCoachMark { return .noSessions }
+        return .firstLaunch
+    }
 
     var body: some View {
         NavigationStack(path: $appState.navigationPath) {
@@ -293,94 +318,34 @@ struct HomeView: View {
                 PPGradient.pageBackground
                     .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // Header
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                BundledImage("PP_GRAD", maxHeight: 200)
-                                    .frame(width: 200, height: 200)
-                                
-                                Text("Your recovery companion")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading, 8)
-                            }
-                            Spacer()
-                        }
-                        .padding(.top, 10)
-                        
-                        // Accessibility Quick Toggle Card
-                        VStack(alignment: .leading, spacing: 8) {
-                            Toggle(isOn: $simulateAssistiveAccess.animation(.spring())) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "accessibility")
-                                        .font(.title2)
-                                        .foregroundColor(PPColor.actionBlue)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Accessibility Mode")
-                                            .font(.headline)
-                                        Text("Simplify the layout and enlarge buttons")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
+                switch userState {
+                case .firstLaunch:
+                    ZStack {
+                        mainHomeContent
+                        if showCoachMark && newSessionButtonFrame != .zero {
+                            CoachMarkOverlay(
+                                isShowing: $showCoachMark,
+                                targetFrame: newSessionButtonFrame,
+                                onSpotlightTapped: {
+                                    withAnimation { showCoachMark = false }
+                                    hasCompletedCoachMark = true
+                                    appState.navigationPath.append("Triage")
                                 }
-                            }
-                            .tint(PPColor.actionBlue)
+                            )
                         }
-                        .padding(16)
-                        .physioGlass(.card)
-
-                        // Today's Plan slots (consolidated across all plans)
-                        if !storage.dailyPlans.isEmpty {
-                            todaysPlanSection
-                        }
-
-                        // Active plan cards
-                        if !storage.dailyPlans.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Active Plans")
-                                    .font(.headline)
-                                    .padding(.leading, 4)
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(storage.dailyPlans) { plan in
-                                            activePlanCard(plan: plan)
-                                                .frame(width: 280)
-                                        }
-                                    }
-                                    .padding(.horizontal, 4)
-                                    .padding(.bottom, 8)
-                                }
-                            }
-                        }
-
-                        // Start new session
-                        startSessionCard
-                        
-                        // Helpful positive advice
-                        InsightCarousel()
-
-                        // Recovery pulse (shown after first completed session)
-                        if storage.sessionCount > 0 || storage.lastFeeling != nil {
-                            RecoveryPulseCard()
-                                .environmentObject(storage)
-                        }
-
-                        // How it works
-                        howItWorksSection
-
-                        // Disclaimer
-                        disclaimerBanner
-
-                        Spacer(minLength: 30)
                     }
-                    .padding(.horizontal, 20)
+                case .noSessions:
+                    EmptyStateView {
+                        appState.navigationPath.append("Triage")
+                    }
+                case .hasSessions:
+                    mainHomeContent
                 }
 
                 // AI Chat floating button
-                ChatFABOverlay()
+                if userState == .hasSessions {
+                    ChatFABOverlay()
+                }
             }
             .navigationBarHidden(true)
             .navigationDestination(for: String.self) { destination in
@@ -399,6 +364,111 @@ struct HomeView: View {
                     EmptyView()
                 }
             }
+            .onAppear {
+                if userState == .firstLaunch {
+                    showCoachMark = true
+                }
+            }
+        }
+    }
+
+    private var mainHomeContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "figure.run.circle.fill")
+                                .font(.system(size: 44))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [PPColor.actionBlue, PPColor.vitalityTeal],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                            Text("PhysioPoint")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                        }
+                        Text("Your recovery companion")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 4)
+                    }
+                    Spacer()
+                }
+                .padding(.top, 10)
+                
+                // Accessibility Quick Toggle Card
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle(isOn: $simulateAssistiveAccess.animation(.spring())) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "accessibility")
+                                .font(.title2)
+                                .foregroundColor(PPColor.actionBlue)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Accessibility Mode")
+                                    .font(.headline)
+                                Text("Simplify the layout and enlarge buttons")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(PPColor.actionBlue)
+                }
+                .padding(16)
+                .physioGlass(.card)
+
+                // Today's Plan slots (consolidated across all plans)
+                if !storage.dailyPlans.isEmpty {
+                    todaysPlanSection
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                // Active plan cards
+                if !storage.dailyPlans.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Active Plans")
+                            .font(.headline)
+                            .padding(.leading, 4)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 16) {
+                                ForEach(storage.dailyPlans) { plan in
+                                    activePlanCard(plan: plan)
+                                        .frame(width: 280)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.bottom, 8)
+                        }
+                    }
+                }
+
+                // Start new session
+                startSessionCard
+                
+                // Helpful positive advice
+                InsightCarousel()
+
+                // Recovery pulse (shown after first completed session)
+                if storage.sessionCount > 0 || storage.lastFeeling != nil {
+                    RecoveryPulseCard()
+                        .environmentObject(storage)
+                }
+
+                // How it works
+                howItWorksSection
+
+                // Disclaimer
+                disclaimerBanner
+
+                Spacer(minLength: 30)
+            }
+            .padding(.horizontal, 20)
         }
     }
 
@@ -580,10 +650,14 @@ struct HomeView: View {
 
     private func resolveExercise(for slot: PlanSlot, in plan: DailyPlan) -> Exercise? {
         let allExercises: [Exercise] = Exercise.kneeExercises
-            + Exercise.elbowExercises + Exercise.shoulderExercises
+            + Exercise.shoulderExercises
             + Exercise.hipExercises
+            + Exercise.elbowExercises
+            + Exercise.ankleExercises
+            
         return allExercises.first(where: { $0.id == slot.exerciseID })
             ?? allExercises.first(where: { $0.name == slot.exerciseName })
+            ?? allExercises.first(where: { slot.exerciseName.contains($0.name) || $0.name.contains(slot.exerciseName) })
     }
     
     private func trackingBadge(for slot: PlanSlot) -> some View {
@@ -616,7 +690,7 @@ struct HomeView: View {
         let nextSlot = plan.slots.first(where: { !$0.isCompleted })
         
         return VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
+            HStack(alignment: .center) {
                 // Icon + Progress Ring
                 ZStack {
                     Circle()
@@ -635,16 +709,32 @@ struct HomeView: View {
                 
                 Spacer()
                 
-                Button {
-                    setConditionFromPlan(plan)
-                    appState.navigationPath.append("Schedule")
-                } label: {
-                    Image(systemName: "list.clipboard.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(width: 36, height: 36)
-                        .background(area.tintColor)
-                        .clipShape(Circle())
+                HStack(spacing: 8) {
+                    Button {
+                        setConditionFromPlan(plan)
+                        appState.navigationPath.append("Schedule")
+                    } label: {
+                        Image(systemName: "list.clipboard.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(area.tintColor)
+                            .clipShape(Circle())
+                    }
+                    
+                    Button {
+                        withAnimation(.spring(duration: 0.35)) {
+                            storage.deletePlan(plan)
+                        }
+                    } label: {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.red.opacity(0.85))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -696,6 +786,13 @@ struct HomeView: View {
                 .stroke(Color.black.opacity(0.04), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .contextMenu {
+            Button(role: .destructive) {
+                storage.deletePlan(plan)
+            } label: {
+                Label("Delete Plan", systemImage: "trash")
+            }
+        }
     }
 
     // MARK: - Helpful Blurb
@@ -741,6 +838,17 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            // Defer one runloop cycle so layout is complete
+                            newSessionButtonFrame = geo.frame(in: .global)
+                        }
+                    }
+            }
+        )
     }
 
     // MARK: - How It Works
@@ -827,5 +935,149 @@ struct FeatureRow: View {
                     .lineSpacing(2)
             }
         }
+    }
+}
+
+// MARK: - App State Empty / Coaching Views
+
+struct CoachMarkOverlay: View {
+    @Binding var isShowing: Bool
+    let targetFrame: CGRect
+    let onSpotlightTapped: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Full-screen tap absorber (blocks everything)
+            Color.black.opacity(0.65)
+                .ignoresSafeArea()
+                .onTapGesture { } // absorb stray taps
+
+            // Cutout spotlight around the New Session button
+            RoundedRectangle(cornerRadius: 20)
+                .frame(width: targetFrame.width + 24,
+                       height: targetFrame.height + 24)
+                .position(x: targetFrame.midX,
+                          y: targetFrame.midY)
+                .blendMode(.destinationOut) // punches a hole in the dim
+
+            // Invisible tap target over the spotlight area
+            Color.clear
+                .frame(
+                    width: targetFrame.width + 24,
+                    height: targetFrame.height + 24
+                )
+                .position(x: targetFrame.midX, y: targetFrame.midY)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onSpotlightTapped()
+                }
+
+            // Tooltip bubble
+            VStack(spacing: 8) {
+                Image(systemName: "hand.tap.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.white)
+
+                Text("Start here")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .foregroundStyle(.white)
+
+                Text("Tap New Session to select your injury area\nand build your first personalized rehab plan.")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+
+                Image(systemName: "arrow.down")
+                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.title3)
+                    .offset(y: -4)
+                    .animation(
+                        .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                        value: isShowing
+                    )
+            }
+            .padding()
+            .position(x: targetFrame.midX,
+                      y: targetFrame.minY - 130) // position above button
+        }
+        .compositingGroup() // required for blendMode cutout to work
+        .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+    }
+}
+
+struct EmptyStateView: View {
+    let onStartTapped: () -> Void
+    @State private var appeared = false
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Spacer()
+
+            // Animated body illustration
+            ZStack {
+                Circle()
+                    .fill(PPColor.actionBlue.opacity(0.08))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "figure.arms.open")
+                    .font(.system(size: 52))
+                    .foregroundStyle(PPColor.actionBlue.opacity(0.7))
+            }
+            .scaleEffect(appeared ? 1 : 0.8)
+            .opacity(appeared ? 1 : 0)
+
+            // Heading
+            VStack(spacing: 8) {
+                Text("Your recovery starts here")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .multilineTextAlignment(.center)
+
+                Text("Tell us what area needs attention and we'll\nbuild a personalized AR rehab plan for you.")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 12)
+
+            // Feature pills — quick value props
+            HStack(spacing: 10) {
+                PPFeaturePill(icon: "camera.viewfinder", text: "AR Tracking")
+                PPFeaturePill(icon: "waveform.path.ecg", text: "Live Feedback")
+                PPFeaturePill(icon: "chart.line.uptrend.xyaxis", text: "Progress Data")
+            }
+            .opacity(appeared ? 1 : 0)
+
+            // Primary CTA
+            Button(action: onStartTapped) {
+                Label("Create My First Plan", systemImage: "plus.circle.fill")
+                    .font(.system(.body, design: .rounded).bold())
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.borderedProminent)
+            .clipShape(Capsule())
+            .padding(.horizontal, 32)
+            .opacity(appeared ? 1 : 0)
+            .scaleEffect(appeared ? 1 : 0.95)
+
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.spring(duration: 0.5).delay(0.1)) { appeared = true }
+        }
+    }
+}
+
+struct PPFeaturePill: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        Label(text, systemImage: icon)
+            .font(.caption.bold())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(PPColor.actionBlue.opacity(0.08), in: Capsule())
+            .foregroundStyle(PPColor.actionBlue)
     }
 }

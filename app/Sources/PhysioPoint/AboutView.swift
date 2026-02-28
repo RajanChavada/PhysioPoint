@@ -18,7 +18,7 @@ struct AboutView: View {
                         VStack(spacing: 4) {
                             Text("PhysioPoint")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
-                            Text("Swift Student Challenge 2024")
+                            Text("Swift Student Challenge 2026")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }

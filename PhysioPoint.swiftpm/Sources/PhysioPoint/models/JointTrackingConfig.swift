@@ -42,21 +42,10 @@ public enum RepDirection: String, Hashable, Codable {
 public struct FormCue: Hashable {
     public let description: String
     public let jointToWatch: String?
-    /// If non-nil, this cue fires when the secondary joint's deviation exceeds this value (degrees).
-    public let maxAngleDeviation: Double?
-    /// If non-nil, this cue only shows when the primary angle is in this zone.
-    public let zone: AngleZone?
 
-    public init(
-        description: String,
-        jointToWatch: String? = nil,
-        maxAngleDeviation: Double? = nil,
-        zone: AngleZone? = nil
-    ) {
+    public init(description: String, jointToWatch: String?) {
         self.description = description
         self.jointToWatch = jointToWatch
-        self.maxAngleDeviation = maxAngleDeviation
-        self.zone = zone
     }
 }
 
@@ -139,11 +128,7 @@ extension Exercise {
                 distalJoint: "right_foot_joint",
                 mode: .angleBased,
                 targetRange: 150...180,
-                formCues: [
-                    FormCue(description: "Sit tall — back against the chair, no leaning.", jointToWatch: "spine_4_joint", maxAngleDeviation: 15),
-                    FormCue(description: "Toes point up, not out.", jointToWatch: "right_foot_joint", zone: .belowTarget),
-                    FormCue(description: "Let the movement come from the knee, not the hip.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Torso stays upright — don't lean back", jointToWatch: "spine_4_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -157,11 +142,7 @@ extension Exercise {
                 distalJoint: "right_foot_joint",
                 mode: .angleBased,
                 targetRange: 160...180,
-                formCues: [
-                    FormCue(description: "Keep the knee fully locked straight as you lift.", jointToWatch: "right_leg_joint", maxAngleDeviation: 15),
-                    FormCue(description: "Low back stays flat — don't arch.", jointToWatch: "spine_4_joint", maxAngleDeviation: 12),
-                    FormCue(description: "Lift slowly, lower with control.")
-                ],
+                formCues: [FormCue(description: "Keep knee locked straight during lift", jointToWatch: "right_leg_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -175,11 +156,7 @@ extension Exercise {
                 distalJoint: "right_foot_joint",
                 mode: .rangeOfMotion,
                 targetRange: 60...120,
-                formCues: [
-                    FormCue(description: "Back stays flat on the surface — no bridging.", jointToWatch: "hips_joint", maxAngleDeviation: 10),
-                    FormCue(description: "Slide the heel in slowly — don't rush the bend.", zone: .belowTarget),
-                    FormCue(description: "Good depth — now slide back out with the same control.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Back stays flat on the surface", jointToWatch: "hips_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .decreasing,
@@ -193,11 +170,7 @@ extension Exercise {
                 distalJoint: "right_foot_joint",
                 mode: .angleBased,
                 targetRange: 155...180,
-                formCues: [
-                    FormCue(description: "Knee tracks straight — don't let it drift inward.", jointToWatch: "right_leg_joint", maxAngleDeviation: 12),
-                    FormCue(description: "Push straight back — no hip rotation.", jointToWatch: "hips_joint"),
-                    FormCue(description: "Hold 2 seconds at full extension.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Knee tracks over second toe", jointToWatch: "right_leg_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -211,11 +184,7 @@ extension Exercise {
                 distalJoint: "right_foot_joint",
                 mode: .rangeOfMotion,
                 targetRange: 70...120,
-                formCues: [
-                    FormCue(description: "Torso stays upright — don't lean forward.", jointToWatch: "spine_4_joint", maxAngleDeviation: 15),
-                    FormCue(description: "Let gravity help — just let the leg drop slowly.", zone: .belowTarget),
-                    FormCue(description: "Good range — hold briefly before returning.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Torso stays upright", jointToWatch: "spine_4_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .decreasing,
@@ -229,11 +198,7 @@ extension Exercise {
                 distalJoint: "right_foot_joint",
                 mode: .holdDuration,
                 targetRange: 155...180,
-                formCues: [
-                    FormCue(description: "Stand tall — eyes on a fixed point in front.", jointToWatch: "spine_7_joint", maxAngleDeviation: 10),
-                    FormCue(description: "Opposite foot fully off the floor.", jointToWatch: "left_foot_joint"),
-                    FormCue(description: "Breathe normally — tension makes balance harder.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Stand tall — opposite foot off ground", jointToWatch: "left_foot_joint")],
                 cameraPosition: .front,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -251,12 +216,8 @@ extension Exercise {
                 middleJoint: "right_forearm_joint",
                 distalJoint: "right_hand_joint",
                 mode: .repetitionCounting,
-                targetRange: 30...90,
-                formCues: [
-                    FormCue(description: "Upper arm stays pinned to your side — no swinging.", jointToWatch: "right_shoulder_1_joint", maxAngleDeviation: 15),
-                    FormCue(description: "Full extension on the way down — straighten it all the way.", zone: .belowTarget), // using below target since it's inverted angle logic?
-                    FormCue(description: "Squeeze at the top of the curl.", zone: .target)
-                ],
+                targetRange: 30...170,
+                formCues: [FormCue(description: "Shoulder stays still — only elbow moves", jointToWatch: "right_shoulder_1_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .decreasing,
@@ -269,12 +230,8 @@ extension Exercise {
                 middleJoint: "right_forearm_joint",
                 distalJoint: "right_hand_joint",
                 mode: .repetitionCounting,
-                targetRange: 30...90,
-                formCues: [
-                    FormCue(description: "Keep the upper arm completely still.", jointToWatch: "right_arm_joint", maxAngleDeviation: 12),
-                    FormCue(description: "Wrist stays neutral — don't curl it.", jointToWatch: "right_hand_joint"),
-                    FormCue(description: "Smooth arc — no jerky momentum.")
-                ],
+                targetRange: 30...160,
+                formCues: [FormCue(description: "Upper arm stays at your side", jointToWatch: "right_arm_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .decreasing,
@@ -288,11 +245,7 @@ extension Exercise {
                 distalJoint: "right_hand_joint",
                 mode: .holdDuration,
                 targetRange: 150...180,
-                formCues: [
-                    FormCue(description: "Shoulder stays completely still — stretch is at the elbow only.", jointToWatch: "right_shoulder_1_joint", maxAngleDeviation: 10),
-                    FormCue(description: "Gentle overpressure — no pain, just mild tension.", zone: .belowTarget),
-                    FormCue(description: "Hold the stretch — don't bounce.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Shoulder stays still — gentle pressure only", jointToWatch: "right_shoulder_1_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -314,11 +267,7 @@ extension Exercise {
                 distalJoint: "right_arm_joint",
                 mode: .rangeOfMotion,
                 targetRange: 130...175,
-                formCues: [
-                    FormCue(description: "Back of hand AND elbow must stay touching the wall.", jointToWatch: "right_arm_joint", maxAngleDeviation: 10),
-                    FormCue(description: "Ribs stay down — don't flare the chest to reach higher.", jointToWatch: "spine_4_joint", maxAngleDeviation: 12),
-                    FormCue(description: "Slide smoothly — no shrugging the shoulder.")
-                ],
+                formCues: [FormCue(description: "Back stays flat against wall", jointToWatch: "spine_4_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -332,11 +281,7 @@ extension Exercise {
                 distalJoint: "right_arm_joint",
                 mode: .rangeOfMotion,
                 targetRange: 130...175,
-                formCues: [
-                    FormCue(description: "Back stays flat — no arching.", jointToWatch: "spine_4_joint", maxAngleDeviation: 10),
-                    FormCue(description: "Arm leads the movement — don't use momentum.", zone: .belowTarget),
-                    FormCue(description: "Hold at the top — breathe out.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Back stays flat — no arching", jointToWatch: "spine_4_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -350,11 +295,7 @@ extension Exercise {
                 distalJoint: "right_arm_joint",
                 mode: .rangeOfMotion,
                 targetRange: 130...175,
-                formCues: [
-                    FormCue(description: "Torso upright — no leaning back to cheat the range.", jointToWatch: "spine_4_joint", maxAngleDeviation: 15),
-                    FormCue(description: "Elbow stays soft — not rigidly locked.", jointToWatch: "right_forearm_joint"),
-                    FormCue(description: "Lower slowly — don't let gravity drop the arm.")
-                ],
+                formCues: [FormCue(description: "Torso stays upright — no leaning back", jointToWatch: "spine_4_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .increasing,
@@ -379,11 +320,7 @@ extension Exercise {
                 distalJoint: "right_upLeg_joint",
                 mode: .angleBased,
                 targetRange: 80...140,
-                formCues: [
-                    FormCue(description: "Stand tall — no backward lean as the leg lifts.", jointToWatch: "spine_7_joint", maxAngleDeviation: 12),
-                    FormCue(description: "Lift from the hip, not the knee.", jointToWatch: "hips_joint", zone: .belowTarget),
-                    FormCue(description: "Hold 2 seconds at the top.", zone: .target)
-                ],
+                formCues: [FormCue(description: "Stand tall — no backward lean", jointToWatch: "spine_7_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .decreasing,
@@ -397,11 +334,7 @@ extension Exercise {
                 distalJoint: "right_leg_joint",
                 mode: .angleBased,
                 targetRange: 100...150,
-                formCues: [
-                    FormCue(description: "Push hips back like closing a car door with your hips.", jointToWatch: "hips_joint"),
-                    FormCue(description: "Spine stays long and neutral — no rounding.", jointToWatch: "spine_4_joint", maxAngleDeviation: 15),
-                    FormCue(description: "Weight in the heels — toes stay light.", jointToWatch: "right_foot_joint")
-                ],
+                formCues: [FormCue(description: "Spine stays neutral — no rounding", jointToWatch: "spine_4_joint")],
                 cameraPosition: .side,
                 reliability: .reliable,
                 repDirection: .decreasing,

@@ -38,14 +38,6 @@ struct SessionMetrics: Codable, Identifiable {
     var todayCompleted: Int = 1          // how many exercises done today
     var todayTotal: Int = 3              // total exercises planned today
 
-    // Quality metrics (from RehabSessionViewModel)
-    var qualityScore: Double = 0.0       // 0.0–1.0 — % of frames in good form
-    var controlRating: Double = 1.0      // 0.0–1.0 — smoothness
-    var controlLabel: String = "Good"    // human-readable control tier
-
-    // Personal feedback from session (PT Card)
-    var sessionFeedback: SessionFeedback = SessionFeedback()
-
     // MARK: - Computed Helpers
 
     var angleDelta: Double? {

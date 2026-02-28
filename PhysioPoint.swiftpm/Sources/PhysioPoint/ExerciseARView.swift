@@ -92,6 +92,9 @@ public struct ExerciseARView: View {
     @StateObject private var viewModel = RehabSessionViewModel()
     @EnvironmentObject var appState: PhysioPointState
     
+    // Ant-overlap toggle for SummaryView pushes
+    @State private var isFinishing = false
+    
     public init() {}
     
     public var body: some View {
@@ -99,17 +102,6 @@ public struct ExerciseARView: View {
             arOrFallback
             
             VStack {
-                // DEBUG banner — remove for final submission
-                if !viewModel.debugText.isEmpty {
-                    Text(viewModel.debugText)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.yellow)
-                        .padding(6)
-                        .background(Color.black.opacity(0.8))
-                        .cornerRadius(6)
-                        .padding(.top, 40) // safer push down
-                }
-                
                 // TOP: Feedback header
                 SmartFeedbackHeader(
                     feedbackMessage: viewModel.feedbackMessage,
@@ -136,6 +128,28 @@ public struct ExerciseARView: View {
                     .padding(.trailing, 16)
                 }
                 .padding(.horizontal, 16)
+                
+                // FALLBACK: No Body Detected Alert
+                if !viewModel.isBodyDetected {
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.crop.rectangle.badge.plus")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.white.opacity(0.8))
+                            .symbolEffect(.pulse, options: .repeating)
+                
+                        Text("Stand in view of the camera")
+                            .font(.system(.headline, design: .rounded))
+                            .foregroundStyle(.white)
+                
+                        Text("Move back until your full body is visible")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.75))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    .padding(.top, 24)
+                }
                 
                 // INSTRUCTION CUES
                 VStack(spacing: 8) {
@@ -186,6 +200,10 @@ public struct ExerciseARView: View {
     }
     
     private func finishSession() {
+        // Prevent double-renders of SummaryView from rapid taps
+        guard !isFinishing else { return }
+        isFinishing = true
+        
         let targetReps = appState.selectedExercise?.reps ?? 3
         let targetRange = appState.selectedExercise?.targetAngleRange ?? 80...95
 
@@ -448,7 +466,7 @@ struct ARViewRepresentable: UIViewRepresentable {
             let config = ARBodyTrackingConfiguration()
             config.automaticSkeletonScaleEstimationEnabled = true
             arView.session.delegate = context.coordinator
-            arView.session.run(config)
+            arView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
         } else {
             viewModel.addDebug("❌ Body tracking NOT supported on this device")
         }
@@ -459,6 +477,13 @@ struct ARViewRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: ARView, context: Context) {
         // Keep the active tracking config in sync when the exercise changes
         context.coordinator.activeConfig = trackingConfig
+        
+        // Fix: If AR session was interrupted or backgrounded, force restart the trackers
+        if uiView.session.currentFrame == nil && ARBodyTrackingConfiguration.isSupported {
+            let config = ARBodyTrackingConfiguration()
+            config.automaticSkeletonScaleEstimationEnabled = true
+            uiView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
+        }
     }
     
     func makeCoordinator() -> Coordinator {

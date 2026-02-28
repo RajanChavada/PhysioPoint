@@ -53,19 +53,21 @@
     - Introduced `InstructionCuePill` system with clean SF Symbols mapping.
     - Revamped `FinishButton` into a full-width capsule.
   - Created `ImageLoader.swift` (`BundledImage` helper) — runtime SPM bundle discovery without `Bundle.module`.
-  - **Fixed Critical UI Bugs**: Added `NavigationStack(path: $appState.navigationPath)` + `.navigationDestination` modifiers to `ScheduleTabView` to prevent the navigation bar from disappearing. Updated `startSlot` logic to fallback to `conditionName` and `exerciseName` lookups, solving "no exercise" errors for hardcoded preload UUIDs.
+  - **Fixed Critical UI Bugs**: Added `NavigationStack(path: $appState.navigationPath)` + `.navigationDestination` modifiers to `ScheduleTabView` to prevent the navigation bar from disappearing. Updated `startSlot` logic to fallback to `conditionName` and `exerciseName` lookups, solving "no exercise" errors for hardcoded preload UUIDs. Patched `AssistiveExerciseView` to conditionally check `!appState.navigationPath.isEmpty` before invoking `removeLast()`, safely falling back to `@Environment(\.dismiss)` to prevent array out-of-bounds crashes during native navigation pushes.
   - **Profile Clean Up**: Stripped the placeholder "Reminders" local notification rows due to Playground limitations. Converted static settings rows into functional `NavigationLink` targets pointing to a newly created `AccessibilitySettingsView` (with `simulateAssistiveAccess` toggle relocated here) and a detailed `AboutView` showing versions & disclaimers.
-  - **Home Screen & Narrative**: Refactored the `AboutView` to feature 4 extensive essay sections detailing the problem space and inclusive design process. Reconfigured the root `HomeView` header, replacing generic SF Symbols with a prominent `200x200` `PP_GRAD.png` custom logo aligned to the leading edge. The `simulateAssistiveAccess` toggle was extracted into a highly-visible, explicitly labelled standalone card at the top of the Home View.
+  - **Home Screen & Narrative**: Refactored the `AboutView` to feature 4 extensive essay sections detailing the problem space and inclusive design process. Reconfigured the root `HomeView` header to use a native, left-aligned standard Apple Typography layout with a `figure.run.circle.fill` badge featuring a `.blue` to `.teal` LinearGradient matching the agent's core UI design. The `simulateAssistiveAccess` toggle was extracted into a highly-visible, explicitly labelled standalone card at the top of the Home View.
   - **App Icon Configured**: Generated a valid `Assets.xcassets/ppicon.appiconset` catalog with a `Contents.json` manifest within Swift Playgrounds to successfully resolve the `appIcon: .asset("ppicon")` property inside `Package.swift`, eliminating build compilation errors and stamping the official `PG` logo on the iPadOS/macOS Home Screen.
+  - **Stateful Home Onboarding**: Restructured the root UI to follow a strictly categorized `HomeUserState` architecture (`.hasSessions` strictly taking logic priority over `.firstLaunch` to prevent overwrite glitches). Fixed a `GeometryReader` block leveraging `DispatchQueue.main.async` to snapshot accurate button coordinate frames, replacing an aggressive `.disabled` block with a transparent `ZStack` tap absorber to natively catch and route clicks on the spotlight. Constructed a dedicated `EmptyStateView` with fallback iOS 17 compatible animations to guide returning users, migrating away from brittle visibility toggles toward cleanly separated context experiences. Built an accessible `AssistiveModeGuidanceBanner` to act as the `.noSessions` equivalent within the `simulateAssistiveAccess` structural loop, injected via an `.asymmetric` edge transition for seamless usability.
 ### Multi-Plan Architecture (CURRENT)
 ```
 User can have multiple active plans (e.g. shoulder + elbow = 6 total slots).
 HomeView shows consolidated Today's Plan with all plans' slots grouped by condition.
 Progress pill shows consolidated count (e.g. "2/6 ✓").
-Each plan has its own Active Plan card with "View Schedule" button.
-ScheduleView shows the current condition's plan only (filtered by conditionID).
+Each plan has its own Active Plan card integrating a native "Delete Plan" `contextMenu` alongside the scheduled progress.
+ScheduleView lists the current active plan configurations and permits users to delete them using explicitly bounded `.confirmationDialog` actions preventing accidental wipes.
 Saved slots have editable times — tap the time capsule → Menu with 6AM-10PM options.
-Starting a slot from HomeView auto-resolves the correct condition via setConditionFromPlan().
+Starting a slot from HomeView auto-resolves the correct condition via `setConditionFromPlan()`.
+Deleting the final plan across either view organically transitions into an iOS 17 safely animated Empty State gracefully bypassing UI bugs.
 ```
 
 ### Session Completion Flow (FULLY WIRED — Multi-Plan)
@@ -96,6 +98,7 @@ Time Adjustment: Tap time capsule on saved slot → Menu → storage.updateSlotH
 - **Onboarding → Home flow**: `ContentView` checks `appState.hasCompletedOnboarding`. False → `OnboardingView`. True → `HomeView` with `NavigationStack`.
 - **Navigation**: `NavigationStack(path:)` with string destinations: Triage → Schedule → SessionIntro → ExerciseAR → Summary.
 - **Design language**: White/blue light theme. `PPColor` and `PPGradient` used everywhere. Solid white card backgrounds. Rounded corners (16-24pt). SF Symbols throughout. No dark backgrounds.
+- **Event Propagation**: Use `.buttonStyle(.plain)` and `.simultaneousGesture(TapGesture())` extensively for buttons embedded within custom cards and `DisclosureGroup` labels to prevent tap target absorption from system-level interactions.
 - **Component library**: `FeatureRow`, `BundledImage`, `OnboardingPageContent`, `PPColor`, `PPGradient`.
 - **StorageService injected as @EnvironmentObject** in: HomeView, ScheduleView, SummaryView.
 - **AppState.activeSlotID** bridges the schedule→session→summary→completion pipeline.
@@ -116,3 +119,14 @@ Time Adjustment: Tap time capsule on saved slot → Menu → storage.updateSlotH
 - Light, welcoming white/blue aesthetic. Polished for judges.
 
 
+
+## AI Rep Consistency Beta Toggle
+- Restored the  within the  as an optional beta feature.
+- Powered by the  toggle.
+- The toggle is exposed to the user within the  (reachable via Profile Settings).
+
+
+## AI Rep Consistency Beta Toggle
+- Restored the `repConsistencyCard` within the `SummaryView` as an optional beta feature.
+- Powered by the `@AppStorage("enableRepConsistency")` toggle.
+- The toggle is exposed to the user within the `AccessibilitySettingsView` (reachable via Profile Settings).

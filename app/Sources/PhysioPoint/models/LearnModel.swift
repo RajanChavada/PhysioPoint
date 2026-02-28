@@ -10,6 +10,7 @@ enum LearnBodyArea: String, CaseIterable, Identifiable {
     case shoulder    = "Shoulder"
     case backAndCore = "Back & Core"
     case ankleAndFoot = "Ankle & Foot"
+    case elbow       = "Elbow"
 
     var id: String { rawValue }
     var displayName: String { rawValue }
@@ -20,6 +21,7 @@ enum LearnBodyArea: String, CaseIterable, Identifiable {
         case .shoulder:     return "Shoulder muscles, Pinching pain."
         case .backAndCore:  return "Lower Pain, Posture, Strength."
         case .ankleAndFoot: return "Sprains, Stability, Getting moving."
+        case .elbow:        return "Tennis Elbow, Golfer's Elbow."
         }
     }
 
@@ -30,6 +32,7 @@ enum LearnBodyArea: String, CaseIterable, Identifiable {
         case .shoulder:     return "shoulder-icon"
         case .backAndCore:  return "back-icon"
         case .ankleAndFoot: return "ankle-icon"
+        case .elbow:        return "elbow-icon"
         }
     }
 
@@ -40,6 +43,7 @@ enum LearnBodyArea: String, CaseIterable, Identifiable {
         case .shoulder:     return "figure.arms.open"
         case .backAndCore:  return "figure.core.training"
         case .ankleAndFoot: return "figure.step.training"
+        case .elbow:        return "figure.hand.raising"
         }
     }
 
@@ -49,6 +53,7 @@ enum LearnBodyArea: String, CaseIterable, Identifiable {
         case .shoulder:     return LearnCondition.shoulderConditions
         case .backAndCore:  return LearnCondition.backConditions
         case .ankleAndFoot: return LearnCondition.ankleConditions
+        case .elbow:        return LearnCondition.elbowConditions
         }
     }
 }
@@ -169,6 +174,72 @@ extension RecoveryEssential {
 // MARK: - Seed Data
 
 extension LearnCondition {
+
+    // ── ELBOW ──────────────────────────────────────────────────────
+    
+    static let elbowConditions: [LearnCondition] = [
+        LearnCondition(
+            name: "Tennis Elbow",
+            shortDescription: "Lateral epicondylitis — outer elbow pain from repetitive wrist extension.",
+            systemIcon: "figure.tennis",
+            overview: """
+            Tennis elbow is an overuse injury causing inflammation or microscopic tearing of the tendons \
+            that join the forearm muscles on the outside of the elbow. Despite its name, it frequently \
+            affects non-athletes who perform repetitive tasks like typing, painting, or using hand tools.\n\n\
+            Recovery requires ceasing the aggravating activity, icing, and stretching, followed by \
+            eccentric strengthening of the wrist extensors.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Calm the Tendon", duration: "0–2 weeks", description: "Avoid gripping and repetitive wrist movements. Use a brace if needed."),
+                RecoveryPhase(title: "Restore Flexibility", duration: "2–4 weeks", description: "Begin gentle wrist flexor and extensor stretches."),
+                RecoveryPhase(title: "Eccentric Strengthening", duration: "4–8 weeks", description: "Use light weights to strengthen the tendon while lengthening it."),
+                RecoveryPhase(title: "Return to Activity", duration: "2–3 months", description: "Gradually resume normal tasks with improved ergonomics.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Counterforce Bracing", description: "Applying a strap below the elbow to reduce tension on the injured tendon.", icon: "bandage"),
+                TherapyTechnique(name: "Eccentric Exercises", description: "Slowly lowering a weight using the wrist extensors to stimulate healing.", icon: "dumbbell.fill"),
+                TherapyTechnique(name: "Ice Massage", description: "Rubbing ice directly over the painful lateral epicondyle for 5 minutes.", icon: "snowflake")
+            ],
+            recommendedExerciseNames: ["Active Elbow Flexion", "Elbow Flexion & Extension"],
+            redFlags: [
+                "Elbow is incredibly swollen or deformed",
+                "You cannot bend or straighten your elbow at all",
+                "Numbness or tingling radiating down into your fingers",
+                "Pain preventing basic daily tasks (like opening doors) after weeks of rest"
+            ]
+        ),
+        
+        LearnCondition(
+            name: "Golfer's Elbow",
+            shortDescription: "Medial epicondylitis — inner elbow pain from repetitive wrist flexion.",
+            systemIcon: "figure.golf",
+            overview: """
+            Similar to Tennis Elbow, Golfer's Elbow is tendinopathy on the inside (medial) aspect of the elbow. \
+            It is caused by repetitive stress to the tendons that pull your wrist downward (flexion) and twist \
+            your forearm inward.\n\n\
+            Rehabilitation mirrors tennis elbow but targets the flexor muscles. Early focus is on avoiding \
+            heavy lifting or forceful gripping, followed by progressive stretching and strengthening.
+            """,
+            recoveryPhases: [
+                RecoveryPhase(title: "Reduce Inflammation", duration: "0–2 weeks", description: "Stop activities causing pain. Use ice and compression."),
+                RecoveryPhase(title: "Gentle Stretching", duration: "2–4 weeks", description: "Stretch the forearm by pulling fingers back toward the body."),
+                RecoveryPhase(title: "Progressive Loading", duration: "4–8 weeks", description: "Strengthen the wrist flexors with light dumbbells or bands."),
+                RecoveryPhase(title: "Activity Reintegration", duration: "8–12 weeks", description: "Return to sports or work with correct form/grip.")
+            ],
+            techniques: [
+                TherapyTechnique(name: "Ergonomic Assessment", description: "Optimizing grip size on tools or rackets to reduce strain.", icon: "hand.raised.fill"),
+                TherapyTechnique(name: "Forearm Stretching", description: "Extending the arm and gently stretching the wrist backwards.", icon: "figure.flexibility"),
+                TherapyTechnique(name: "Grip Strengthening", description: "Using putty or a stress ball to build forearm endurance.", icon: "hand.point.up.braille.fill")
+            ],
+            recommendedExerciseNames: ["Active Elbow Flexion", "Elbow Extension Stretch"],
+            redFlags: [
+                "Sudden sharp pop or tear sensation during lifting",
+                "Visible bruising running down the inner forearm",
+                "Weakness that causes dropping objects",
+                "Tingling specifically in the ring and pinky fingers (Cubital Tunnel sign)"
+            ]
+        )
+    ]
 
     // ── KNEE ──────────────────────────────────────────────────────
 

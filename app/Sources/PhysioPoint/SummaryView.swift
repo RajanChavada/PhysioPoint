@@ -22,6 +22,7 @@ struct SummaryView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("enableRepConsistency") private var enableRepConsistency = false
     @State private var selectedFeeling: SessionFeeling? = nil
     @State private var animateCheckmark = false
     @State private var animateCards = false
@@ -52,7 +53,9 @@ struct SummaryView: View {
                     VStack(spacing: 20) {
                         heroSection
                         statsCard
-                        repConsistencyCard
+                        if enableRepConsistency {
+                            repConsistencyCard
+                        }
                         vsLastSessionCard
                         bottomRow
                         feelingResponseCard

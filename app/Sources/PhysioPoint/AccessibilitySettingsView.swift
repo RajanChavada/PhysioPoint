@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccessibilitySettingsView: View {
     @AppStorage("simulateAssistiveAccess") private var simulateAssistiveAccess = false
+    @AppStorage("enableRepConsistency") private var enableRepConsistency = false
     
     var body: some View {
         ZStack {
@@ -41,6 +42,22 @@ struct AccessibilitySettingsView: View {
                                     Text("Simulate Assistive Access")
                                         .font(.system(.body, design: .rounded).weight(.medium))
                                     Text("Replaces the standard UI with a highly simplified, large-format interface mimicking iOS Assistive Access.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .tint(PPColor.vitalityTeal)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            
+                            Divider().padding(.leading, 16)
+                            
+                            Toggle(isOn: $enableRepConsistency.animation(.spring())) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("AI Rep Consistency (Beta)")
+                                        .font(.system(.body, design: .rounded).weight(.medium))
+                                    Text("Enables advanced per-rep consistency tracking in the summary view.")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                         .fixedSize(horizontal: false, vertical: true)

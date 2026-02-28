@@ -8,10 +8,23 @@ struct AssistiveAccessRootView: View {
     @EnvironmentObject var engine: PhysioGuardEngine
     @EnvironmentObject var storage: StorageService
     @State private var navResetID = UUID()
+    @AppStorage("hasDismissedGuidance") private var hasDismissedGuidance = false
 
     var body: some View {
         NavigationStack {
             List {
+                // Assistive Guidance Banner (Empty State equivalent)
+                if storage.dailyPlans.isEmpty && !hasDismissedGuidance {
+                    Section {
+                        AssistiveModeGuidanceBanner {
+                            hasDismissedGuidance = true
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .padding(.bottom, 8)
+                    }
+                }
+
                 // Recovery card (shown after first session)
                 if storage.sessionCount > 0 || storage.lastFeeling != nil {
                     Section {
@@ -132,5 +145,46 @@ struct AssistiveAccessToggleRow: View {
         }
         .tint(.blue)
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Assistive Mode Guidance Banner
+
+struct AssistiveModeGuidanceBanner: View {
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.dynamicTypeSize) var typeSize
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "hand.point.right.fill")
+                .foregroundStyle(.white)
+                .font(.title3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Ready to begin?")
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                Text("Tap 'Start Exercises' below to create your first session.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation { onDismiss() }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .frame(minWidth: 44, minHeight: 44) // HIG tap target
+        }
+        .padding()
+        .background(PPColor.actionBlue.gradient, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Guidance: Tap Start Exercises to create your first rehab plan.")
+        .accessibilityAddTraits(.isStaticText)
     }
 }

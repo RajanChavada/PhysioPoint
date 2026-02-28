@@ -8,11 +8,38 @@ struct AssistiveExerciseView: View {
     @EnvironmentObject var appState: PhysioPointState
     @EnvironmentObject var storage: StorageService
     @State private var showAR = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
-                Spacer(minLength: 20)
+                // Top bar with explicit back
+                HStack {
+                    Button {
+                        if !appState.navigationPath.isEmpty {
+                            appState.navigationPath.removeLast()
+                        } else {
+                            dismiss()
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chevron.left")
+                                .font(.title3.bold())
+                            Text("Back")
+                                .font(.system(.body, design: .rounded).bold())
+                        }
+                        .foregroundStyle(PPColor.actionBlue)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                        .background(PPColor.actionBlue.opacity(0.1), in: Capsule())
+                        .frame(minWidth: 44, minHeight: 44) // HIG accessibility target
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                
+                Spacer(minLength: 10)
 
                 // Exercise image
                 if let guideImage = exercise.guideImageName {

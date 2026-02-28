@@ -65,7 +65,24 @@ struct ScheduleView: View {
     // MARK: - Header
 
     private var headerSection: some View {
-        VStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
+            // ONLY show back button if we arrived via NavigationStack from Home
+            if !appState.navigationPath.isEmpty {
+                Button {
+                    appState.navigationPath.removeLast()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Home")
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(PPColor.actionBlue)
+                }
+                .padding(.bottom, 8)
+                .buttonStyle(.plain)
+            }
+
+            VStack(spacing: 6) {
             if isSettingUpNewPlan {
                 if let cond = appState.selectedCondition {
                     let area = BodyArea(rawValue: cond.bodyArea.rawValue) ?? .knee
@@ -93,7 +110,9 @@ struct ScheduleView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 16)
         .padding(.bottom, 20)
         .padding(.horizontal, 24)
@@ -170,6 +189,21 @@ struct ScheduleView: View {
                             .foregroundColor(.secondary)
                     }
                     Spacer()
+
+                    Button {
+                        withAnimation(.spring(duration: 0.35)) {
+                            storage.deletePlan(plan)
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.red)
+                            .padding(8)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .simultaneousGesture(TapGesture())
                 }
             }
             .padding(16)
@@ -180,6 +214,13 @@ struct ScheduleView: View {
                     .stroke(PPColor.actionBlue.opacity(0.1), lineWidth: 1)
             )
             .tint(area.tintColor)
+            .contextMenu {
+                Button(role: .destructive) {
+                    storage.deletePlan(plan)
+                } label: {
+                    Label("Delete Plan", systemImage: "trash")
+                }
+            }
         }
     }
 
@@ -313,10 +354,15 @@ struct ScheduleView: View {
 
     private func resolveExerciseFromSlot(_ slot: PlanSlot) -> Exercise? {
         let allExercises: [Exercise] = Exercise.kneeExercises
-            + Exercise.elbowExercises + Exercise.shoulderExercises
+            + Exercise.shoulderExercises
             + Exercise.hipExercises
+            + Exercise.elbowExercises
+            + Exercise.ankleExercises
+
+        // Try ID match first, then exact name, then fuzzy name fallback
         return allExercises.first(where: { $0.id == slot.exerciseID })
             ?? allExercises.first(where: { $0.name == slot.exerciseName })
+            ?? allExercises.first(where: { slot.exerciseName.contains($0.name) || $0.name.contains(slot.exerciseName) })
     }
 
     // MARK: - Setup Cards (initial creation)
@@ -402,17 +448,18 @@ struct ScheduleView: View {
     private var noPlansView: some View {
         VStack(spacing: 16) {
             Image(systemName: "calendar.badge.plus")
-                .font(.system(size: 40))
-                .foregroundColor(PPColor.actionBlue.opacity(0.5))
+                .font(.system(size: 48))
+                .foregroundStyle(PPColor.actionBlue.opacity(0.5))
             Text("No active rehab plans")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded).bold())
             Text("Go to the Home tab and tap 'New Session' to complete Triage and create a daily schedule.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
         }
+        .padding(.horizontal, 40)
         .padding(.top, 60)
+        .transition(.opacity.animation(.easeInOut(duration: 0.3)))
     }
 
     // MARK: - Save & Status Bottom Banners

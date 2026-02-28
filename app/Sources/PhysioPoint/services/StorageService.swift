@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 class StorageService: ObservableObject {
     private let defaults = UserDefaults.standard
@@ -34,6 +35,20 @@ class StorageService: ObservableObject {
 
     func removePlan(conditionID: UUID) {
         dailyPlans.removeAll { $0.conditionID == conditionID }
+        persistPlans()
+    }
+
+    func deletePlan(_ plan: DailyPlan) {
+        withAnimation(.spring(duration: 0.35)) {
+            dailyPlans.removeAll { $0.id == plan.id }
+        }
+        persistPlans()
+    }
+
+    func deletePlans(at offsets: IndexSet) {
+        withAnimation(.spring(duration: 0.35)) {
+            dailyPlans.remove(atOffsets: offsets)
+        }
         persistPlans()
     }
 

@@ -688,3 +688,13 @@ if engine.messages.isEmpty {
 }
 ```
 This is also a judge UX win — they immediately see your AI feature in action without needing to type anything.
+## AI Rep Consistency Beta Toggle
+- Restored the  within the  as an optional beta feature.
+- Powered by the  toggle.
+- The toggle is exposed to the user within the  (reachable via Profile Settings).
+
+
+## AI Rep Consistency Beta Toggle
+- Restored the `repConsistencyCard` within the `SummaryView` as an optional beta feature.
+- Powered by the `@AppStorage("enableRepConsistency")` toggle.
+- The toggle is exposed to the user within the `AccessibilitySettingsView` (reachable via Profile Settings).

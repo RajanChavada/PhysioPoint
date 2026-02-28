@@ -165,6 +165,7 @@ ScheduleView shows current condition's plan only:
 SummaryView:
   → marks slot complete → persists metrics
   → reads consolidated counts for progress ring
+  → (Assistive Mode): Backwards navigation utilizes `@Environment(\.dismiss)` safely circumventing `appState.navigationPath` "Index Out of Range" crashes when natively routed.
 ```
 
 ## Next Steps / Integrations
@@ -174,3 +175,14 @@ SummaryView:
 - Consider left/right side toggle (currently all exercises use right-side joints).
 - Ankle exercises are ALL timer-only — future: consider camera-based foot tracking improvements.
 - Target angle ranges on Exercise statics (display) differ from trackingConfig.targetRange (AR-measured, widened). UI cards show exercise.targetAngleRange, engine uses config.targetRange.
+
+## AI Rep Consistency Beta Toggle
+- Restored the  within the  as an optional beta feature.
+- Powered by the  toggle.
+- The toggle is exposed to the user within the  (reachable via Profile Settings).
+
+
+## AI Rep Consistency Beta Toggle
+- Restored the `repConsistencyCard` within the `SummaryView` as an optional beta feature.
+- Powered by the `@AppStorage("enableRepConsistency")` toggle.
+- The toggle is exposed to the user within the `AccessibilitySettingsView` (reachable via Profile Settings).

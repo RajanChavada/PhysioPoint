@@ -439,3 +439,608 @@ Priority	Feature	Effort	Impact
 🟡 Medium	Staggered step animation on Exercise Guide	20 min	Delight factor
 🟢 Nice	Gauge for recovery timeline	~30 min	Native feel
 HealthKit is the one I'd prioritize most for the remaining 2 days — writing a completed rehab session to Apple Health takes ~30 minutes to implement but signals to judges that you deeply understand the Apple ecosystem and built something users would actually trust with their health data
+
+
+-- 
+
+## Feature roadmap -> conditional rendering of three state seperation for UX 
+Great addition to the feature set. This is a two-layer problem — empty state guidance (no sessions yet) and coach mark spotlight (first-time user doesn't know where anything is). Here's the full robust system:
+​
+
+## The State Machine
+First, model the three distinct user states your home page needs to handle — they each get a completely different UI:
+
+```swift
+enum HomeUserState {
+    case firstLaunch          // Never opened app before
+    case noSessions           // Has opened before but 0 plans created
+    case hasSessions          // Normal state — has active plans
+}
+
+class HomeViewModel: ObservableObject {
+    @AppStorage("hasCompletedOnboarding") var hasCompletedOnboarding = false
+    @AppStorage("hasCreatedFirstSession") var hasCreatedFirstSession = false
+    @Published var plans: [RehabPlan] = []
+
+    var userState: HomeUserState {
+        if !hasCompletedOnboarding { return .firstLaunch }
+        if plans.isEmpty { return .noSessions }
+        return .hasSessions
+    }
+}
+```
+Layer 1 — First Launch Coach Mark Overlay
+On first ever open, a dimmed overlay spotlights the New Session button specifically, blocking all other interaction until tapped. Built natively in SwiftUI — no third-party library needed:
+
+```swift
+struct CoachMarkOverlay: View {
+    @Binding var isShowing: Bool
+    let targetFrame: CGRect   // pass in the "New Session" button's frame
+
+    var body: some View {
+        ZStack {
+            // Dimmed background — blocks all taps on everything else
+            Color.black.opacity(0.65)
+                .ignoresSafeArea()
+                .onTapGesture { } // absorb taps, do nothing
+
+            // Cutout spotlight around the New Session button
+            RoundedRectangle(cornerRadius: 20)
+                .frame(width: targetFrame.width + 24,
+                       height: targetFrame.height + 24)
+                .position(x: targetFrame.midX,
+                          y: targetFrame.midY)
+                .blendMode(.destinationOut) // punches a hole in the dim
+
+            // Tooltip bubble
+            VStack(spacing: 8) {
+                Image(systemName: "hand.tap.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.white)
+                    .symbolEffect(.bounce, options: .repeating)
+
+                Text("Start here")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .foregroundStyle(.white)
+
+                Text("Tap New Session to select your injury area\nand build your first personalized rehab plan.")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+
+                Image(systemName: "arrow.down")
+                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.title3)
+                    .offset(y: -4)
+                    .animation(
+                        .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                        value: isShowing
+                    )
+            }
+            .padding()
+            .position(x: targetFrame.midX,
+                      y: targetFrame.minY - 130) // position above button
+        }
+        .compositingGroup() // required for blendMode cutout to work
+        .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+    }
+}
+```
+Wire it to the home view using GeometryReader to capture the button's exact position:
+​
+
+```swift
+struct HomeView: View {
+    @StateObject var viewModel = HomeViewModel()
+    @State private var newSessionButtonFrame: CGRect = .zero
+    @State private var showCoachMark = false
+
+    var body: some View {
+        ZStack {
+            // Main home content
+            ScrollView {
+                VStack(spacing: 20) {
+                    // ... your normal home content
+
+                    // New Session button — capture its frame
+                    NewSessionButton()
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear
+                                    .onAppear {
+                                        newSessionButtonFrame = geo.frame(in: .global)
+                                        if viewModel.userState == .firstLaunch {
+                                            withAnimation { showCoachMark = true }
+                                        }
+                                    }
+                            }
+                        )
+                        .disabled(showCoachMark == false ? false : false) // always tappable
+                        .simultaneousGesture(
+                            TapGesture().onEnded {
+                                withAnimation { showCoachMark = false }
+                                viewModel.hasCompletedOnboarding = true
+                            }
+                        )
+                }
+            }
+            .disabled(showCoachMark) // block all scroll + taps on the rest of the page
+
+            // Coach mark overlay
+            if showCoachMark {
+                CoachMarkOverlay(
+                    isShowing: $showCoachMark,
+                    targetFrame: newSessionButtonFrame
+                )
+                .zIndex(999)
+            }
+        }
+    }
+}
+```
+##Layer 2 — Empty State (No Sessions, Returning User)
+When the user has completed onboarding but has zero active plans, replace the home content with a warm empty state — not a blank screen, not an error.
+​
+
+```swift
+struct EmptyStateView: View {
+    let onStartTapped: () -> Void
+    @State private var appeared = false
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Spacer()
+
+            // Animated body illustration
+            ZStack {
+                Circle()
+                    .fill(.blue.opacity(0.08))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "figure.arms.open")
+                    .font(.system(size: 52))
+                    .foregroundStyle(.blue.opacity(0.7))
+                    .symbolEffect(.breathe, options: .repeating)
+            }
+            .scaleEffect(appeared ? 1 : 0.8)
+            .opacity(appeared ? 1 : 0)
+
+            // Heading
+            VStack(spacing: 8) {
+                Text("Your recovery starts here")
+                    .font(.system(.title2, design: .rounded).bold())
+                    .multilineTextAlignment(.center)
+
+                Text("Tell us what area needs attention and we'll\nbuild a personalized AR rehab plan for you.")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 12)
+
+            // Feature pills — quick value props
+            HStack(spacing: 10) {
+                FeaturePill(icon: "camera.viewfinder", text: "AR Tracking")
+                FeaturePill(icon: "waveform.path.ecg", text: "Live Feedback")
+                FeaturePill(icon: "chart.line.uptrend.xyaxis", text: "Progress Data")
+            }
+            .opacity(appeared ? 1 : 0)
+
+            // Primary CTA
+            Button(action: onStartTapped) {
+                Label("Create My First Plan", systemImage: "plus.circle.fill")
+                    .font(.system(.body, design: .rounded).bold())
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.borderedProminent)
+            .clipShape(Capsule())
+            .padding(.horizontal, 32)
+            .opacity(appeared ? 1 : 0)
+            .scaleEffect(appeared ? 1 : 0.95)
+
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.spring(duration: 0.5).delay(0.1)) { appeared = true }
+        }
+    }
+}
+
+struct FeaturePill: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        Label(text, systemImage: icon)
+            .font(.caption.bold())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(.blue.opacity(0.08), in: Capsule())
+            .foregroundStyle(.blue)
+    }
+}
+```
+## Layer 3 — Assistive Mode Integration
+For the assistive/accessibility mode, the guidance becomes even more explicit — larger targets, voice-over aware, and a persistent nudge banner rather than a full overlay:
+​
+
+```swift
+struct AssistiveModeGuidanceBanner: View {
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.dynamicTypeSize) var typeSize
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "hand.point.right.fill")
+                .foregroundStyle(.white)
+                .font(.title3)
+                .symbolEffect(.pulse, isActive: !reduceMotion)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Ready to begin?")
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                Text("Tap the + button above to create your first session.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation { onDismiss() }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .frame(minWidth: 44, minHeight: 44) // HIG tap target
+        }
+        .padding()
+        .background(.blue.gradient, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Guidance: Tap the New Session button to create your first rehab plan.")
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+```
+The Conditional Switch in HomeView
+Wire all three layers together cleanly:
+​
+​
+
+```swift
+    var userState: HomeUserState {
+        if !storage.dailyPlans.isEmpty { return .hasSessions }
+        if hasCompletedCoachMark { return .noSessions }
+        return .firstLaunch
+    }
+
+var body: some View {
+    ZStack {
+        switch viewModel.userState {
+        case .firstLaunch:
+            // Show normal home content but wrap inside a ZStack tap-absorber struct
+            ZStack {
+                mainHomeContent
+                if showCoachMark && newSessionButtonFrame != .zero {
+                    CoachMarkOverlay(
+                        isShowing: $showCoachMark,
+                        targetFrame: newSessionButtonFrame,
+                        onSpotlightTapped: {
+                            // Closure safely intercepts tap event bypassing the disabled mask
+                        }
+                    )
+                }
+            }
+
+        case .noSessions:
+            // Warm empty state — only CTA available
+            EmptyStateView()
+
+        case .hasSessions:
+            // Full normal home experience
+            mainHomeContent
+        }
+    }
+    .animation(.easeInOut(duration: 0.4), value: viewModel.userState)
+}
+```
+The key insight here is the three-state separation — first launch, empty returning user, and active user all have meaningfully different needs, and jamming them into one view with visibility toggles leads to messy fragile logic. The @AppStorage flags are lightweight, persist across app restarts, and automatically sync with the SwiftUI view lifecycle without any manual UserDefaults calls.
+
+
+
+-- 
+
+## FEATURE: Deleting plans 
+1. StorageService — Add Delete Method
+First, add the delete function wherever your dailyPlans array lives in StorageService:
+
+```swift
+// In StorageService.swift
+func deletePlan(_ plan: DailyPlan) {
+    withAnimation(.spring(duration: 0.35)) {
+        dailyPlans.removeAll { $0.id == plan.id }
+    }
+    // If you persist to UserDefaults/JSON, re-save here:
+    savePlans()
+}
+
+func deletePlans(at offsets: IndexSet) {
+    withAnimation(.spring(duration: 0.35)) {
+        dailyPlans.remove(atOffsets: offsets)
+    }
+    savePlans()
+}
+```
+2. Home Page — Swipe-to-Delete on Plan Cards
+The carousel cards need a different pattern than a List — use a confirmation dialog triggered by long press, since swipe-to-delete doesn't work on horizontal ScrollView cards:
+
+```swift
+// Add to HomeView state
+@State private var planToDelete: DailyPlan? = nil
+@State private var showDeleteConfirmation = false
+
+// Update activePlanCard to support deletion
+private func activePlanCard(plan: DailyPlan) -> some View {
+    let area = BodyArea(rawValue: plan.bodyArea) ?? .knee
+    let completed = plan.slots.filter(\.isCompleted).count
+    let total = plan.slots.count
+    let nextSlot = plan.slots.first(where: { !$0.isCompleted })
+
+    return VStack(alignment: .leading, spacing: 16) {
+        HStack(alignment: .top) {
+            // Icon + Progress Ring (unchanged)
+            ZStack {
+                Circle()
+                    .stroke(area.tintColor.opacity(0.15), lineWidth: 4)
+                    .frame(width: 48, height: 48)
+                Circle()
+                    .trim(from: 0, to: total > 0 ? CGFloat(completed) / CGFloat(total) : 0)
+                    .stroke(area.tintColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .frame(width: 48, height: 48)
+                    .rotationEffect(.degrees(-90))
+                Image(systemName: area.systemImage)
+                    .font(.system(size: 20))
+                    .foregroundColor(area.tintColor)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                // Schedule button (existing)
+                Button {
+                    setConditionFromPlan(plan)
+                    appState.navigationPath.append("Schedule")
+                } label: {
+                    Image(systemName: "list.clipboard.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(area.tintColor)
+                        .clipShape(Circle())
+                }
+
+                // ← NEW: Delete button
+                Button {
+                    planToDelete = plan
+                    showDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.red.opacity(0.85))
+                        .clipShape(Circle())
+                }
+            }
+        }
+
+        VStack(alignment: .leading, spacing: 4) {
+            Text(plan.bodyArea.capitalized)
+                .font(.caption.bold())
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+            Text(plan.conditionName)
+                .font(.title3.bold())
+                .foregroundColor(.primary)
+                .lineLimit(2)
+        }
+
+        Divider()
+
+        HStack {
+            if let next = nextSlot {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill").foregroundColor(.orange)
+                    Text("Next: \(homeFormattedHour(next.scheduledHour))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.orange)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(PPColor.vitalityTeal)
+                    Text("All done today!")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(PPColor.vitalityTeal)
+                }
+            }
+            Spacer()
+            Text("\(completed)/\(total) Done")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+        }
+    }
+    .padding(18)
+    .background(Color.white)
+    .cornerRadius(24)
+    .overlay(
+        RoundedRectangle(cornerRadius: 24)
+            .stroke(Color.black.opacity(0.04), lineWidth: 1)
+    )
+    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+    // Long press as secondary delete trigger (accessibility fallback)
+    .contextMenu {
+        Button(role: .destructive) {
+            planToDelete = plan
+            showDeleteConfirmation = true
+        } label: {
+            Label("Delete Plan", systemImage: "trash")
+        }
+    }
+}
+```
+Wire the confirmation dialog to mainHomeContent or HomeView.body:
+
+```swift
+// Add as a modifier on the outer ZStack or ScrollView in HomeView
+.confirmationDialog(
+    "Delete \(planToDelete?.conditionName ?? "this plan")?",
+    isPresented: $showDeleteConfirmation,
+    titleVisibility: .visible
+) {
+    Button("Delete Plan", role: .destructive) {
+        if let plan = planToDelete {
+            storage.deletePlan(plan)
+            planToDelete = nil
+        }
+    }
+    Button("Cancel", role: .cancel) {
+        planToDelete = nil
+    }
+} message: {
+    Text("This will remove the plan and all its scheduled sessions. This can't be undone.")
+}
+```
+3. Today's Plan Section — Remove Orphaned Slots Automatically
+When a plan is deleted, the todaysPlanSection rows for it should disappear. Since your todayPlanGroup already iterates storage.dailyPlans, the deletion from StorageService automatically cascades — no extra work needed as long as dailyPlans is @Published.
+
+However, add a guard so the today section hides gracefully when all plans are deleted:
+
+```swift
+// In mainHomeContent, update the today section guard:
+if !storage.dailyPlans.isEmpty {
+    todaysPlanSection
+        .transition(.opacity.combined(with: .move(edge: .top)))
+}
+```
+4. Schedule Page — Native Swipe-to-Delete
+The ScheduleView uses a List with DisclosureGroup sections — swipe-to-delete is native here. Add onDelete to the plan-level ForEach:
+
+```swift
+// In ScheduleView
+struct ScheduleView: View {
+    @EnvironmentObject var storage: StorageService
+    @State private var expandedPlans: Set<String> = []
+    @State private var planToDelete: DailyPlan? = nil
+    @State private var showDeleteConfirmation = false
+
+    var body: some View {
+        List {
+            ForEach(storage.dailyPlans) { plan in
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedPlans.contains(plan.id.uuidString) },
+                        set: { isExpanded in
+                            withAnimation(.spring(duration: 0.3)) {
+                                if isExpanded {
+                                    expandedPlans.insert(plan.id.uuidString)
+                                } else {
+                                    expandedPlans.remove(plan.id.uuidString)
+                                }
+                            }
+                        }
+                    )
+                ) {
+                    ForEach(plan.slots) { slot in
+                        ScheduleSessionRow(slot: slot, plan: plan)
+                    }
+                } label: {
+                    PlanDisclosureHeader(plan: plan)
+                        // Swipe actions on the header row
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                planToDelete = plan
+                                showDeleteConfirmation = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                }
+            }
+            // Native onDelete for drag-to-delete gesture
+            .onDelete { offsets in
+                // Map IndexSet to plans for confirmation
+                if let index = offsets.first {
+                    planToDelete = storage.dailyPlans[index]
+                    showDeleteConfirmation = true
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .confirmationDialog(
+            "Delete \(planToDelete?.conditionName ?? "this plan")?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Plan", role: .destructive) {
+                if let plan = planToDelete {
+                    storage.deletePlan(plan)
+                    planToDelete = nil
+                }
+            }
+            Button("Cancel", role: .cancel) { planToDelete = nil }
+        } message: {
+            Text("All scheduled sessions for this plan will be removed.")
+        }
+        .toolbar {
+            // Edit mode for multi-delete
+            EditButton()
+        }
+        .onAppear {
+            expandedPlans = Set(
+                storage.dailyPlans
+                    .filter { $0.slots.contains(where: { !$0.isCompleted }) }
+                    .map { $0.id.uuidString }
+            )
+        }
+    }
+}
+```
+5. Empty State After Last Plan Deleted
+When the user deletes their final plan from the Schedule page, they get a blank List with no context. Add an empty state overlay:
+
+```swift
+// In ScheduleView body, wrap the List:
+ZStack {
+    List { ... }
+
+    if storage.dailyPlans.isEmpty {
+        VStack(spacing: 16) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 48))
+                .foregroundStyle(PPColor.actionBlue.opacity(0.5))
+                .symbolEffect(.breathe, options: .repeating)
+
+            Text("No active plans")
+                .font(.system(.title3, design: .rounded).bold())
+
+            Text("Go to Home to create your first rehab plan.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+    }
+}
+```
+Quick Reference
+Surface	Delete Pattern	Why
+Home carousel cards	Trash button in card header + long-press context menu	Horizontal scroll can't swipe-to-delete
+Today's Plan rows	Auto-removed when parent plan deleted (cascades)	Rows are derived from dailyPlans
+Schedule DisclosureGroup	.swipeActions on header + .onDelete on ForEach	Native List supports both patterns
+Both surfaces	confirmationDialog before commit	Destructive action needs confirmation per HIG
+Schedule empty state	ZStack overlay when dailyPlans.isEmpty	Prevents blank screen after last delete
