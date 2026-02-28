@@ -3,12 +3,12 @@
 ### Apple Swift Student Challenge 2026
 > Interested in the Swift Student Challenge? Learn more [here](https://developer.apple.com/swift-student-challenge/).
 
-![Introduction to PhysioPoint: Rehabilitation without the cost, from the comfort of your own home](Resources/Intro_Image.png)
+![Introduction to PhysioPoint: Rehabilitation without the cost, from the comfort of your own home](PhysioPoint.swiftpm/Sources/PhysioPoint/Resources/intro_image.png)
 
 ## Overview
 **PhysioPoint** is designed for individuals who need physiotherapy or rehabilitation but face barriers like cost, access, or intimidation around clinical care. It empowers people to begin and maintain recovery on their own terms by providing structured, guided programs that fit seamlessly into their real, busy lives.
 
-![Feature Overview Demo: Schedules, Body Maps, AR Tracking, and more](Resources/Feature_Demo.png)
+![Feature Overview Demo: Schedules, Body Maps, AR Tracking, and more](PhysioPoint.swiftpm/Sources/PhysioPoint/Resources/screens.png)
 
 ## The Problem & Inspiration
 **What problem is PhysioPoint trying to solve and what inspired it?**
@@ -30,7 +30,7 @@ PhysioPoint removes the barrier to start rehabilitation while supporting, not re
 
 ## Accessibility First
 
-![Accessibility Mode Demo Screen: Simplified UX for the less tech-savvy](Resources/Accessibility_Demo.png)
+![Accessibility Mode Demo Screen: Simplified UX for the less tech-savvy](PhysioPoint.swiftpm/Sources/PhysioPoint/Resources/accesibility.png)
 
 Accessibility was the foundation for PhysioPoint and was shaped into every design choice. The target users included elderly individuals, people recovering from serious injuries, and those who simply experience cognitive fatigue during rehabilitation. This demanded a different approach than just building a technically adverse system.
 
@@ -41,7 +41,7 @@ Accessibility was the foundation for PhysioPoint and was shaped into every desig
 
 ## On-Device AI Integration
 
-![Learn about common body pains leveraging Apple's Foundation Models](Resources/Foundation_Models_Demo.png)
+![Learn about common body pains leveraging Apple's Foundation Models](PhysioPoint.swiftpm/Sources/PhysioPoint/Resources/educate.png)
 
 The application uses on-device foundation models which are compiler-gated with `#available` for iOS 26 / Xcode 26. This powers a user AI rehabilitation agent, allowing people to ask direct questions about their pain intelligently. The app also gracefully degrades to a rule-based engine on older systems to ensure all users maintain access to core guidance.
 
