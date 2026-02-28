@@ -3,6 +3,13 @@
 ### Apple Swift Student Challenge 2026
 > Interested in the Swift Student Challenge? Learn more [here](https://developer.apple.com/swift-student-challenge/).
 
+
+## Demo Video
+
+[Watch the video](https://www.youtube.com/watch?v=2WARVVFpDEo)
+
+
+-----------
 ![Introduction to PhysioPoint: Rehabilitation without the cost, from the comfort of your own home](PhysioPoint.swiftpm/Sources/PhysioPoint/Resources/intro_image.png)
 
 ## Overview
