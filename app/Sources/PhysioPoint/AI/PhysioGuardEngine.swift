@@ -1,6 +1,8 @@
 import SwiftUI
 
 // MARK: - PhysioGuard Engine
+// PhysioGuardEngine runs entirely on-device — no network calls.
+// Responses are generated from KnowledgeStore.swift (static rehab data).
 
 /// Observable session manager for the AI chat.
 /// Works in two modes:

@@ -2,6 +2,9 @@ import Foundation
 import simd
 
 // MARK: - Angle Zone
+// Defines the core generic interface for kinematic range-of-motion tracking.
+// Extracted to a protocol to allow different math/engine strategies
+// while keeping views decoupled from raw phase-transition logic.
 
 public enum AngleZone {
     case belowTarget

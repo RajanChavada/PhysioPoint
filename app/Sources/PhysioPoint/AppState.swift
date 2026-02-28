@@ -10,6 +10,8 @@ enum AppTab: String, CaseIterable, Hashable {
 }
 
 // MARK: - App State
+// Uses EnvironmentObject instead of @Binding to avoid prop-drilling
+// across the 4-tab navigation hierarchy.
 
 final class PhysioPointState: ObservableObject {
     @Published var selectedCondition: Condition?

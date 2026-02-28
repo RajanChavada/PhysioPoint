@@ -1,7 +1,9 @@
 import SwiftUI
 
 // MARK: - Assistive Access Root View
-// ✅ No iOS 26 APIs — compiles in Swift Playgrounds
+// AssistiveAccess is a parallel view hierarchy, not a modifier,
+// to allow completely different interaction paradigms for elderly users.
+// No iOS 26 APIs — compiles in Swift Playgrounds
 
 struct AssistiveAccessRootView: View {
     @EnvironmentObject var appState: PhysioPointState

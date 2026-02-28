@@ -2,9 +2,9 @@ import Foundation
 import simd
 
 public enum AngleMath {
-    /// Computes the angle in degrees at the middle joint between three body points.
-    /// Works for ANY joint triple: (hip, knee, ankle), (shoulder, elbow, wrist), etc.
-    /// Returns 180 when the limb is perfectly straight, ~90 when bent at right angle.
+    /// Computes the angle at the middle joint formed by proximal-joint-distal
+    /// using the dot product of vectors from the joint.
+    /// Returns degrees in range [0, 180]. (180 when limb is perfectly straight).
     /// Labels are for educational demo only — not medical prescriptions.
     public static func computeJointAngle(proximal: SIMD3<Float>, joint: SIMD3<Float>, distal: SIMD3<Float>) -> Double {
         let vectorA = proximal - joint

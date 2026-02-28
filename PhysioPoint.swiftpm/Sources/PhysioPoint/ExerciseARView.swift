@@ -340,6 +340,9 @@ struct SmartFeedbackHeader: View {
         .padding(.vertical, 12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isBodyDetected ? "Tracker active. \(feedbackMessage)" : "Tracker searching. \(feedbackMessage)")
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 
@@ -368,6 +371,10 @@ struct AngleDisplay: View {
         .scaleEffect(inTargetZone ? 1.05 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: inTargetZone)
         .sensoryFeedback(.impact(weight: .heavy), trigger: inTargetZone)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Current Angle")
+        .accessibilityValue("\(Int(angle)) degrees")
+        .accessibilityAddTraits(.updatesFrequently)
         .onChange(of: angle) { _, newVal in
             inTargetZone = newVal >= targetMinAngle && newVal <= targetMaxAngle
         }
@@ -401,6 +408,9 @@ struct RepProgressRing: View {
         }
         .frame(width: 72, height: 72)
         .sensoryFeedback(.success, trigger: current == target && target > 0)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Repetitions Completed")
+        .accessibilityValue("\(current) out of \(target)")
     }
 }
 
@@ -424,6 +434,8 @@ struct InstructionCuePill: View {
         .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: Capsule())
         .labelStyle(.titleAndIcon)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Hint: \(message)")
     }
 }
 
@@ -445,7 +457,10 @@ struct FinishButton: View {
     }
 }
 
-// MARK: - AR Implementation (iOS device only)
+// MARK: - AR Body Tracking Engine
+// Uses ARBodyTrackingConfiguration to detect human body joints in real time.
+// Joint angles are computed via AngleMath.swift using the law of cosines.
+// Supports configurable joint triplets via JointTrackingConfig model.
 
 #if os(iOS) && !targetEnvironment(simulator)
 struct ARViewRepresentable: UIViewRepresentable {
